@@ -90,7 +90,7 @@ const historyLimit = 100;
 const serializeLayout = () => JSON.stringify({ seats: state.seats, board: state.board, cabinet: state.cabinet });
 let lastLayoutSnapshot = serializeLayout();
 let selectedKey = null;
-let scene, camera, renderer, controls, raycaster, pointer;
+let scene, camera, renderer, controls, raycaster, pointer, roomGroup;
 let wallGroup, windowGroup, columnGroup, furnitureGroup, zoneGroup, collisionGroup, dimensionGroup;
 let dragging = null;
 let renderAfterPointer = false;
@@ -693,6 +693,8 @@ async function loadLocalModel(file, selectedFiles = [file]) {
     scene.add(object);
     importedModel = object;
     importedModelName = file.name;
+    roomGroup.visible = false;
+    movable.forEach(item => { item.group.visible = false; });
     const target = new THREE.Vector3(0, Math.min(size.y * .25, 1.2), 0);
     controls.target.copy(target);
     const distance = Math.max(5, Math.min(18, largestSide * 2.4));
@@ -711,6 +713,8 @@ function closeLocalModel(rerender = true) {
     disposeObject(importedModel);
     importedModel = null;
   }
+  if (roomGroup) roomGroup.visible = true;
+  movable.forEach(item => { item.group.visible = true; });
   importedModelName = '';
   importedModelUrls.forEach(URL.revokeObjectURL);
   importedModelUrls = [];
@@ -737,6 +741,9 @@ function createScene(host) {
   keyLight.shadow.mapSize.set(2048, 2048); scene.add(keyLight);
   const fill = new THREE.DirectionalLight(0xffffff, 1.1);
   fill.position.set(5, 8, -4); scene.add(fill);
+  roomGroup = new THREE.Group();
+  roomGroup.name = 'Office scene';
+  scene.add(roomGroup);
   buildRoom(); rebuildMovables();
   raycaster = new THREE.Raycaster(); pointer = new THREE.Vector2();
   renderer.domElement.addEventListener('pointerdown', pointerDown);
@@ -750,16 +757,16 @@ function createScene(host) {
 }
 function buildRoom() {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.width, ROOM.length), mat(0x777a7d, .96, { roughness: 1 }));
-  floor.rotation.x = -Math.PI / 2; floor.position.y = -.04; floor.receiveShadow = true; scene.add(floor);
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -.04; floor.receiveShadow = true; roomGroup.add(floor);
   const carpet = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.width - .2, ROOM.length - .2),
     new THREE.MeshStandardMaterial({ color: 0x777a7d, roughness: 1, metalness: 0 }));
-  carpet.rotation.x = -Math.PI / 2; carpet.position.y = -.01; carpet.receiveShadow = true; scene.add(carpet);
-  wallGroup = new THREE.Group(); wallGroup.name = 'Walls'; scene.add(wallGroup);
-  windowGroup = new THREE.Group(); windowGroup.name = 'Windows'; scene.add(windowGroup);
-  columnGroup = new THREE.Group(); columnGroup.name = 'Columns'; scene.add(columnGroup);
-  furnitureGroup = new THREE.Group(); furnitureGroup.name = 'Fixed furniture'; scene.add(furnitureGroup);
-  zoneGroup = new THREE.Group(); scene.add(zoneGroup);
-  collisionGroup = new THREE.Group(); scene.add(collisionGroup);
+  carpet.rotation.x = -Math.PI / 2; carpet.position.y = -.01; carpet.receiveShadow = true; roomGroup.add(carpet);
+  wallGroup = new THREE.Group(); wallGroup.name = 'Walls'; roomGroup.add(wallGroup);
+  windowGroup = new THREE.Group(); windowGroup.name = 'Windows'; roomGroup.add(windowGroup);
+  columnGroup = new THREE.Group(); columnGroup.name = 'Columns'; roomGroup.add(columnGroup);
+  furnitureGroup = new THREE.Group(); furnitureGroup.name = 'Fixed furniture'; roomGroup.add(furnitureGroup);
+  zoneGroup = new THREE.Group(); roomGroup.add(zoneGroup);
+  collisionGroup = new THREE.Group(); roomGroup.add(collisionGroup);
   obstacles.length = 0;
   const walls = mat(0xe4e1d9), trim = mat(0x79756d), base = mat(0xbab6ad);
   const doorLeft = ENTRY.centerX - ENTRY.width / 2;
@@ -879,7 +886,7 @@ function addNameLabel(parent, name) {
 }
 function makeWorkstation(seat) {
   const root = new THREE.Group(); root.position.set(seat.x, 0, seat.z); root.rotation.y = seat.rot || 0;
-  root.userData.moveKey = seatKey(seat.id); scene.add(root);
+  root.userData.moveKey = seatKey(seat.id); root.visible = !importedModel; scene.add(root);
   const desktop = mat(0xf3efe5, .4), legs = mat(0x555855, .54);
   box(root, .6, .075, 1.2, desktop, 0, .77, 0);
   for (const x of [-.26, .26]) for (const z of [-.55, .55]) box(root, .035, .74, .035, legs, x, .37, z);
@@ -908,6 +915,7 @@ function makeBoard() {
   box(board, .07, 1.23, .07, frame, .43, .62, 0);
   box(board, .9, .07, .42, frame, 0, .055, 0);
   box(board, .55, .045, .07, frame, 0, .48, 0);
+  board.visible = !importedModel;
   scene.add(board);
   movable.set('board', { group: board, data: state.board, kind: 'board', width: 1.2, depth: .2, localX: 0, localZ: 0 });
 }
