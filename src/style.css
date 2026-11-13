@@ -1116,6 +1116,9 @@ body[data-theme="dark"] .mini-plan {
     min-width: 0;
     width: 100%;
   }
+  #app {
+    overflow: hidden;
+  }
   .topbar {
     height: 48px;
     flex-basis: 48px;
@@ -1220,6 +1223,9 @@ body[data-theme="dark"] .mini-plan {
   .command-bar {
     min-width: 0;
     width: 100%;
+  }
+  #app {
+    overflow: hidden;
   }
   .topbar {
     height: 52px;
