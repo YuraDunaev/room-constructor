@@ -15,6 +15,7 @@ The side plan keeps the real 5.76 m × 8.395 m room proportions. Its desk and ch
 ## What you can do
 
 - Inspect the office in a rotatable, zoomable 3D scene. Use the AutoCAD style view cube to choose a face or corner; the cube follows the camera and view changes animate smoothly.
+- Open a local **GLB, glTF, OBJ, or STL** model from the scene toolbar. Files are read in the browser and are not uploaded; glTF files that reference separate assets must be selected together with those assets.
 - Move workstations, the interactive board, and the cabinet by dragging them in the scene. A workstation includes its desk and chair, so they move and rotate together.
 - Select an object in the project tree to highlight it in the scene; hover over objects in the scene to preview the same highlight.
 - Use keyboard shortcuts for camera orbit, object movement and rotation, zoom, saving, and removing the selected workstation. The full list is available in **Settings**, with a compact hint at the bottom of the scene.
@@ -24,6 +25,7 @@ The side plan keeps the real 5.76 m × 8.395 m room proportions. Its desk and ch
 - Browse room elements in the project tree. Clicking a movable object selects and highlights it in the scene. Drag the divider beside the tree to resize the panel; its width is remembered in the browser.
 - Switch between Russian and English, and between light and dark interface themes in **Settings**.
 - Keep the room plan visible while experimenting. The current room model is 5.76 m × 8.395 m, with a 2.8 m wall height. It includes the short end wall glazing, the opposite end entrance, structural columns, movable cabinet, carpet, and the initial workstations based on the supplied drawings.
+- Use the editor on a phone in landscape orientation. The scene fills the screen, supports touch camera gestures, and the scene toolbar can be scrolled horizontally.
 
 ## Requirements
 
@@ -127,3 +129,5 @@ RoomConstructor/
 ## Current scope
 
 This version is a local planning tool. It does not yet synchronize layouts between users or store plans on a server. Because the layout is stored in browser local storage, clearing site data for the local application also clears the saved layout.
+
+Direct **Revit (`.rvt`) and AutoCAD (`.dwg`)** viewing is not included. Those proprietary formats need a CAD/BIM translation service such as Autodesk Platform Services; that requires a server to keep API credentials private and sends selected files to the provider for translation. Export a model to GLB, glTF, OBJ, or STL to view it locally in this version.
