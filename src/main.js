@@ -98,6 +98,7 @@ let hoveredKey = null;
 let importedModel = null;
 let importedModelUrls = [];
 let importedModelName = '';
+let blackHoleDisk;
 let hoverMaterialBackups = [];
 let cameraMoveFrame = 0;
 let targetCameraQuaternion = null;
@@ -803,7 +804,7 @@ function buildRoom() {
   box(wallGroup, rightPier, .09, .12, base, (doorRight + HALF_W) / 2, .045, -HALF_L - .01);
   box(wallGroup, 5, .09, .12, base, 0, .045, HALF_L + .01);
 
-  buildWindows(); buildColumns(); buildZoneOverlay();
+  buildWindows(); buildColumns(); buildZoneOverlay(); buildYuraWallShelf();
 }
 function buildDoorLeaf(hingeX, z, rotation = 1.05) {
   const leaf = new THREE.Group();
@@ -853,6 +854,205 @@ function buildZoneOverlay() {
   const work = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.width - .16, ROOM.length - .16),
   new THREE.MeshBasicMaterial({ color: 0xe6b82e, transparent: true, opacity: .085, side: THREE.DoubleSide, depthWrite: false }));
   work.rotation.x = -Math.PI / 2; work.position.set(0, .006, 0); zoneGroup.add(work);
+}
+function buildYuraWallShelf() {
+  const shelfGroup = new THREE.Group();
+  shelfGroup.name = 'Yura wall shelf';
+  roomGroup.add(shelfGroup);
+  const yura = startSeats.find(seat => seat.id === 's3');
+  const shelfDepth = .47;
+  const shelfLength = 1.38;
+  const wallX = -HALF_W;
+  const shelfTop = 1.82;
+  const shelfZ = yura.z;
+  const shelfX = wallX + shelfDepth / 2;
+  const wood = mat(0x70533c, .63);
+  const woodEdge = mat(0x9a744f, .54);
+  const bracketMetal = mat(0x454947, .34, { metalness: .48 });
+
+  // The shelf projects from the long wall above the left-hand workstation row.
+  box(shelfGroup, shelfDepth, .055, shelfLength, wood, shelfX, shelfTop - .028, shelfZ);
+  box(shelfGroup, shelfDepth, .018, .035, woodEdge, shelfX, shelfTop - .064, shelfZ - shelfLength / 2 + .018);
+  box(shelfGroup, shelfDepth, .018, .035, woodEdge, shelfX, shelfTop - .064, shelfZ + shelfLength / 2 - .018);
+
+  for (const supportZ of [shelfZ - .49, shelfZ + .49]) {
+    box(shelfGroup, .035, .26, .035, bracketMetal, wallX + .025, shelfTop - .17, supportZ);
+    box(shelfGroup, shelfDepth - .06, .035, .035, bracketMetal,
+      wallX + (shelfDepth - .06) / 2, shelfTop - .17, supportZ);
+    const braceLength = shelfDepth - .12;
+    const brace = box(shelfGroup, braceLength, .026, .026, bracketMetal,
+      wallX + braceLength / 2, shelfTop - .235, supportZ);
+    brace.rotation.z = .29;
+    const screw = cylinder(shelfGroup, .012, .012, .012, woodEdge, wallX + .045, shelfTop - .13, supportZ, 12);
+    screw.rotation.z = Math.PI / 2;
+  }
+
+  makePottedCactus(shelfGroup, shelfX - .055, shelfTop, shelfZ + .43);
+  makeBlackHole(shelfGroup, shelfX + .07, shelfTop + .10, shelfZ - .36);
+}
+function makePottedCactus(parent, x, shelfTop, z) {
+  const plant = new THREE.Group();
+  plant.position.set(x, shelfTop, z);
+  parent.add(plant);
+
+  const terracotta = mat(0xb9633d, .54);
+  const terracottaRim = mat(0xe09362, .42);
+  const soil = mat(0x332b24, 1);
+  const cactusGreen = mat(0x2e7547, .78);
+  const cactusLight = mat(0x4d9860, .72);
+  const spine = mat(0xf2dfb5, .72);
+
+  cylinder(plant, .064, .048, .09, terracotta, 0, .045, 0, 24);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.061, .006, 8, 32), terracottaRim);
+  rim.position.y = .087;
+  plant.add(rim);
+  cylinder(plant, .055, .055, .009, soil, 0, .088, 0, 24);
+
+  cylinder(plant, .034, .042, .15, cactusGreen, 0, .167, 0, 20);
+  const crown = new THREE.Mesh(new THREE.SphereGeometry(.034, 20, 14), cactusGreen);
+  crown.position.set(0, .242, 0);
+  plant.add(crown);
+
+  for (const direction of [-1, 1]) {
+    const arm = new THREE.Group();
+    arm.position.set(direction * .03, .15, 0);
+    arm.rotation.z = -direction * .38;
+    cylinder(arm, .018, .02, .065, cactusLight, 0, .032, 0, 12);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(.018, 12, 10), cactusLight);
+    tip.position.y = .066;
+    arm.add(tip);
+    cylinder(arm, .012, .012, .043, cactusLight, direction * .014, .078, 0, 10);
+    const armTip = new THREE.Mesh(new THREE.SphereGeometry(.012, 12, 10), cactusLight);
+    armTip.position.set(direction * .014, .1, 0);
+    arm.add(armTip);
+    plant.add(arm);
+  }
+
+  for (let row = 0; row < 4; row++) {
+    const y = .12 + row * .034;
+    const around = row % 2 ? 5 : 4;
+    for (let index = 0; index < around; index++) {
+      const angle = index / around * Math.PI * 2 + row * .17;
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(.0032, 6, 5), spine);
+      dot.position.set(Math.cos(angle) * .039, y, Math.sin(angle) * .039);
+      plant.add(dot);
+    }
+  }
+}
+function makeBlackHole(parent, x, shelfTop, z) {
+  const accretionDiskRadius = .38;
+  const feature = new THREE.Group();
+  feature.position.set(x, shelfTop, z);
+  parent.add(feature);
+
+  const eventHorizon = new THREE.Mesh(
+    new THREE.SphereGeometry(.111, 56, 40),
+    new THREE.MeshBasicMaterial({ color: 0x020108, toneMapped: false })
+  );
+  eventHorizon.position.y = .014;
+  feature.add(eventHorizon);
+
+  const photonRing = new THREE.Mesh(
+    new THREE.TorusGeometry(.117, .006, 10, 112),
+    new THREE.MeshBasicMaterial({ color: 0xffdfa7, toneMapped: false })
+  );
+  photonRing.rotation.x = Math.PI / 2;
+  photonRing.position.y = .016;
+  feature.add(photonRing);
+
+  const lensingArc = new THREE.Mesh(
+    new THREE.TorusGeometry(.132, .0022, 8, 112, Math.PI * .72),
+    new THREE.MeshBasicMaterial({
+      color: 0x9ea9ff, transparent: true, opacity: .7, toneMapped: false,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    })
+  );
+  lensingArc.rotation.y = -.24;
+  lensingArc.position.y = .02;
+  feature.add(lensingArc);
+
+  const textureCanvas = document.createElement('canvas');
+  textureCanvas.width = 512;
+  textureCanvas.height = 512;
+  const context = textureCanvas.getContext('2d');
+  const gradient = context.createRadialGradient(256, 256, 30, 256, 256, 256);
+  gradient.addColorStop(0, 'rgba(5, 2, 14, 0)');
+  gradient.addColorStop(.27, 'rgba(8, 4, 20, 0)');
+  gradient.addColorStop(.295, 'rgba(82, 74, 185, .28)');
+  gradient.addColorStop(.31, 'rgba(159, 183, 255, .9)');
+  gradient.addColorStop(.33, 'rgba(255, 250, 226, 1)');
+  gradient.addColorStop(.35, 'rgba(255, 207, 126, .98)');
+  gradient.addColorStop(.4, 'rgba(245, 112, 47, .9)');
+  gradient.addColorStop(.52, 'rgba(173, 44, 30, .64)');
+  gradient.addColorStop(.76, 'rgba(79, 20, 38, .32)');
+  gradient.addColorStop(1, 'rgba(20, 6, 28, 0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 512, 512);
+
+  // Uneven, Doppler-brightened filaments keep the disc from looking like a flat ring.
+  context.save();
+  context.translate(256, 256);
+  for (let index = 0; index < 44; index++) {
+    const angle = index * 2.399963;
+    const radius = 80 + (index % 13) * 11.2;
+    const arcLength = .08 + (index % 5) * .035;
+    const brightSide = Math.cos(angle - .45) > .52;
+    const hue = brightSide ? '255, 226, 178' : '255, 105, 48';
+    context.beginPath();
+    context.arc(0, 0, radius, angle, angle + arcLength);
+    context.strokeStyle = `rgba(${hue}, ${brightSide ? .66 : .38})`;
+    context.lineWidth = 1.2 + (index % 4) * .55;
+    context.shadowColor = brightSide ? '#fff0ce' : '#ff652d';
+    context.shadowBlur = brightSide ? 9 : 5;
+    context.stroke();
+  }
+  context.restore();
+
+  const brightLobe = context.createRadialGradient(385, 132, 2, 385, 132, 72);
+  brightLobe.addColorStop(0, 'rgba(255, 245, 219, .54)');
+  brightLobe.addColorStop(.42, 'rgba(255, 170, 91, .23)');
+  brightLobe.addColorStop(1, 'rgba(255, 91, 45, 0)');
+  context.fillStyle = brightLobe;
+  context.fillRect(313, 60, 144, 144);
+
+  const accretionTexture = new THREE.CanvasTexture(textureCanvas);
+  accretionTexture.colorSpace = THREE.SRGBColorSpace;
+
+  blackHoleDisk = new THREE.Group();
+  blackHoleDisk.position.y = .014;
+  feature.add(blackHoleDisk);
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(accretionDiskRadius, 160),
+    new THREE.MeshBasicMaterial({
+      map: accretionTexture, transparent: true, side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+    })
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = -.001;
+  blackHoleDisk.add(disc);
+
+  const arcColors = [0xffcf7d, 0xff7a3b, 0xffe6c6, 0x91a9ff];
+  const arcs = [
+    { radius: .118, angle: .78, phase: .25 },
+    { radius: .17, angle: .52, phase: 2.2 },
+    { radius: .23, angle: .7, phase: 4.5 },
+    { radius: .29, angle: .44, phase: 1.25 },
+    { radius: .35, angle: .37, phase: 3.5 }
+  ];
+  arcs.forEach((arc, index) => {
+    const segment = new THREE.Mesh(
+      new THREE.TorusGeometry(arc.radius, index === 0 ? .0035 : .0022, 7, 72, arc.angle),
+      new THREE.MeshBasicMaterial({
+        color: arcColors[index], transparent: true, opacity: index === 0 ? .82 : .56,
+        blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+      })
+    );
+    segment.rotation.x = Math.PI / 2;
+    segment.rotation.z = arc.phase;
+    segment.position.y = index % 2 ? .003 : -.002;
+    blackHoleDisk.add(segment);
+  });
 }
 function makeChair(parent, side) {
   const chair = new THREE.Group(); chair.position.set(side * .62, 0, 0);
@@ -1255,6 +1455,7 @@ function resizeScene() {
 }
 function animate() {
   requestAnimationFrame(animate);
+  if (blackHoleDisk) blackHoleDisk.rotation.y += .006;
   controls.update(); syncViewCube(); renderer.render(scene, camera);
 }
 
