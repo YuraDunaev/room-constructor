@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Room Constructor — запуск",
+      "type": "node-terminal",
+      "request": "launch",
+      "preLaunchTask": "room-constructor: install dependencies if needed",
+      "command": "npm.cmd run dev -- --host 127.0.0.1",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    }
+  ]
+}

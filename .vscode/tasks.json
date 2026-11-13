@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "room-constructor: install dependencies if needed",
+      "type": "shell",
+      "command": "if (!(Test-Path node_modules/vite)) { npm.cmd install --no-audit --no-fund --cache \"$env:TEMP\\room-constructor-npm-cache\" }",
+      "problemMatcher": []
+    }
+  ]
+}
