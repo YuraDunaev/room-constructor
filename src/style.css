@@ -198,6 +198,29 @@ button {
 .add-button {
   min-height: 42px;
 }
+.imported-file-name {
+  max-width: 190px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.imported-file-name button {
+  flex: 0 0 auto;
+  padding: 0 3px;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+}
 .separator {
   width: 1px;
   height: 38px;
@@ -448,6 +471,7 @@ button {
   font-size: 14px;
 }
 .viewport {
+  grid-column: 3;
   min-width: 0;
   min-height: 0;
   position: relative;
@@ -463,6 +487,7 @@ button {
   height: 100%;
   display: block;
   cursor: grab;
+  touch-action: none;
 }
 .scene-host canvas:active {
   cursor: grabbing;
@@ -1079,5 +1104,184 @@ body[data-theme="dark"] .mini-plan {
     transform-origin: top right;
   }
 }
-.viewport { grid-column: 3; }
+@media (max-width: 900px) and (min-width: 501px) and (orientation: landscape) {
+  body {
+    min-width: 0;
+    min-height: 0;
+  }
+  .topbar {
+    height: 48px;
+    flex-basis: 48px;
+    gap: 10px;
+    padding: 0 10px;
+  }
+  .brand {
+    min-width: 0;
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    font-size: 19px;
+  }
+  .brand small,
+  .breadcrumb,
+  .local-label,
+  #resetPlan,
+  #savePlan {
+    display: none;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  .top-actions #openSettings {
+    min-height: 34px;
+    padding: 0 9px;
+  }
+  .command-bar {
+    height: 54px;
+    flex-basis: 54px;
+    gap: 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 8px;
+    scrollbar-width: thin;
+  }
+  .command-title,
+  .toolbar-spacer,
+  .room-chip,
+  .toggles .check-control:nth-child(n + 3) {
+    display: none;
+  }
+  .tool-button,
+  .command-group button {
+    min-height: 36px;
+    padding: 0 9px;
+  }
+  .add-button {
+    min-height: 36px;
+  }
+  .imported-file-name {
+    max-width: 130px;
+  }
+  .editor-layout {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .project-sidebar,
+  .sidebar-resizer,
+  .properties {
+    display: none;
+  }
+  .viewport {
+    grid-column: 1;
+  }
+  .scene-title {
+    top: 8px;
+    left: 8px;
+    padding: 6px 8px;
+  }
+  .scene-title small {
+    font-size: 12px;
+  }
+  .scene-hint {
+    display: none;
+  }
+  .view-compass {
+    top: 4px;
+    right: 6px;
+    transform: scale(.68);
+    transform-origin: top right;
+  }
+  .zoom-controls {
+    right: 8px;
+    bottom: 8px;
+  }
+  .zoom-controls button {
+    width: 34px;
+    height: 32px;
+  }
+}
+@media (max-width: 500px) {
+  body {
+    min-width: 0;
+    min-height: 0;
+  }
+  .topbar {
+    height: 52px;
+    flex-basis: 52px;
+    gap: 8px;
+    padding: 0 9px;
+  }
+  .brand {
+    min-width: 0;
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    font-size: 19px;
+  }
+  .brand small,
+  .breadcrumb,
+  .local-label,
+  #resetPlan,
+  #savePlan {
+    display: none;
+  }
+  .top-actions {
+    gap: 5px;
+  }
+  .command-bar {
+    height: 52px;
+    flex-basis: 52px;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 8px;
+    scrollbar-width: thin;
+  }
+  .command-title,
+  .toolbar-spacer,
+  .room-chip,
+  .toggles .check-control:nth-child(n + 3) {
+    display: none;
+  }
+  .tool-button,
+  .command-group button {
+    min-height: 36px;
+    padding: 0 9px;
+  }
+  .editor-layout {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .project-sidebar,
+  .sidebar-resizer,
+  .properties {
+    display: none;
+  }
+  .viewport {
+    grid-column: 1;
+  }
+  .scene-title {
+    top: 8px;
+    left: 8px;
+    padding: 6px 8px;
+  }
+  .scene-title small,
+  .scene-hint {
+    display: none;
+  }
+  .view-compass {
+    top: 2px;
+    right: 4px;
+    transform: scale(.58);
+    transform-origin: top right;
+  }
+  .zoom-controls {
+    right: 8px;
+    bottom: 8px;
+  }
+}
 .properties { grid-column: 4; }

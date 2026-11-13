@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import './style.css';
 
 const ROOM = { width: 5.76, length: 8.395, wallHeight: 2.8 };
@@ -12,6 +15,7 @@ const dictionaries = {
     room: 'Помещение', shell: 'Конструкции', walls: 'Стены', windows: 'Окна', columns: 'Колонны',
     furniture: 'Мебель', seats: 'Рабочие места', board: 'Интерактивная доска', cabinet: 'Шкаф',
     toolbar: 'УПРАВЛЕНИЕ СЦЕНОЙ', add: 'Добавить место', save: 'Сохранить', reset: 'Сбросить',
+    openModel: 'Открыть 3D-файл', removeModel: 'Закрыть файл', modelLoaded: 'Файл загружен', modelError: 'Не удалось открыть этот файл',
     view: 'Вид', top: 'Сверху', front: 'Спереди', orbit: '3D', rotate: 'Поворот',
     wallsToggle: 'Стены и окна', dimensions: 'Габариты', collisions: 'Коллизии', zones: 'Рабочая зона',
     workZone: 'Рабочая зона', settings: 'Настройки', properties: 'СВОЙСТВА',
@@ -36,6 +40,7 @@ const dictionaries = {
     office: 'Office plan', project: 'Room project', hierarchy: 'PROJECT TREE', room: 'Room', shell: 'Building shell',
     walls: 'Walls', windows: 'Windows', columns: 'Columns', furniture: 'Furniture', seats: 'Workspaces',
     board: 'Interactive board', cabinet: 'Cabinet', toolbar: 'SCENE CONTROLS', add: 'Add workspace',
+    openModel: 'Open 3D file', removeModel: 'Close file', modelLoaded: 'File loaded', modelError: 'Could not open this file',
     save: 'Save', reset: 'Reset', view: 'View', top: 'Top', front: 'Front', orbit: '3D', rotate: 'Rotate',
     wallsToggle: 'Walls and windows', dimensions: 'Dimensions', collisions: 'Collisions', zones: 'Work area',
     workZone: 'Work area', settings: 'Settings', properties: 'PROPERTIES',
@@ -88,7 +93,11 @@ let selectedKey = null;
 let scene, camera, renderer, controls, raycaster, pointer;
 let wallGroup, windowGroup, columnGroup, furnitureGroup, zoneGroup, collisionGroup, dimensionGroup;
 let dragging = null;
+let renderAfterPointer = false;
 let hoveredKey = null;
+let importedModel = null;
+let importedModelUrls = [];
+let importedModelName = '';
 let hoverMaterialBackups = [];
 let cameraMoveFrame = 0;
 let targetCameraQuaternion = null;
@@ -248,6 +257,9 @@ function render() {
   <section class="command-bar">
     <span class="command-title">${t('toolbar')}</span>
     <button class="tool-button primary-button add-button" id="addSeat">＋　${t('add')}</button>
+    <button class="tool-button" id="openModel">⇧　${t('openModel')}</button>
+    <input id="modelFile" type="file" multiple accept=".glb,.gltf,.obj,.stl,model/gltf-binary,model/gltf+json,model/obj,model/stl" hidden>
+    ${importedModelName ? `<span class="imported-file-name" title="${escapeHtml(importedModelName)}">${escapeHtml(importedModelName)}<button id="removeModel" aria-label="${t('removeModel')}" title="${t('removeModel')}">×</button></span>` : ''}
     <i class="separator"></i>
     <div class="command-group">
       <span>${t('view')}</span>
@@ -371,6 +383,13 @@ function miniObjectMarks() {
 }
 function bindUi() {
   app.querySelector('#openSettings').onclick = () => { state.settingsOpen = true; render(); };
+  app.querySelector('#openModel').onclick = () => app.querySelector('#modelFile').click();
+  app.querySelector('#modelFile').onchange = event => {
+    const file = event.target.files?.[0];
+    if (file) loadLocalModel(file, [...event.target.files]);
+    event.target.value = '';
+  };
+  app.querySelector('#removeModel')?.addEventListener('click', closeLocalModel);
   app.querySelector('#addSeat').onclick = () => {
     const id = `s${Date.now()}`;
     state.seats.push({ id, name: t('newSeat'), x: 0, z: 0, rot: 0, side: 1, zone: 'work' });
@@ -618,6 +637,84 @@ function initScene() {
   if (!renderer) createScene(host);
   else { host.appendChild(renderer.domElement); rebuildMovables(); resizeScene(); }
   refreshLayers(); updateDimensions(); updateCollisions();
+}
+async function loadLocalModel(file, selectedFiles = [file]) {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  const nextModelUrls = [];
+  try {
+    let object;
+    if (extension === 'glb' || extension === 'gltf') {
+      const manager = new THREE.LoadingManager();
+      const siblingFiles = new Map(selectedFiles.map(selectedFile => [selectedFile.name, selectedFile]));
+      manager.setURLModifier(url => {
+        const fileName = decodeURIComponent(url.split(/[\\/]/).pop()?.split(/[?#]/)[0] || '');
+        const sibling = siblingFiles.get(fileName);
+        if (!sibling) return url;
+        const objectUrl = URL.createObjectURL(sibling);
+        nextModelUrls.push(objectUrl);
+        return objectUrl;
+      });
+      object = await new Promise((resolve, reject) => {
+        file.arrayBuffer().then(buffer => new GLTFLoader(manager).parse(buffer, '', result => resolve(result.scene), reject), reject);
+      });
+    } else if (extension === 'obj') {
+      object = new OBJLoader().parse(await file.text());
+    } else if (extension === 'stl') {
+      const geometry = new STLLoader().parse(await file.arrayBuffer());
+      geometry.computeVertexNormals();
+      object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xc9c5bb, metalness: .12, roughness: .72 }));
+    } else {
+      throw new Error('Unsupported model format');
+    }
+
+    closeLocalModel(false);
+    importedModelUrls = nextModelUrls;
+    object.name = file.name;
+    object.traverse(child => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach(material => { material.side = THREE.DoubleSide; });
+        }
+      }
+    });
+    object.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(object);
+    const size = bounds.getSize(new THREE.Vector3());
+    const largestSide = Math.max(size.x, size.y, size.z);
+    if (!Number.isFinite(largestSide) || largestSide <= 0) throw new Error('The model has no visible geometry');
+    object.position.x -= (bounds.min.x + bounds.max.x) / 2;
+    object.position.z -= (bounds.min.z + bounds.max.z) / 2;
+    object.position.y -= bounds.min.y;
+    object.scale.multiplyScalar(Math.min(1, 4.5 / largestSide));
+    object.position.y += .02;
+    scene.add(object);
+    importedModel = object;
+    importedModelName = file.name;
+    const target = new THREE.Vector3(0, Math.min(size.y * .25, 1.2), 0);
+    controls.target.copy(target);
+    const distance = Math.max(5, Math.min(18, largestSide * 2.4));
+    camera.position.set(distance * .55, distance * .9, distance * .7).add(target);
+    controls.update();
+    render();
+  } catch (error) {
+    nextModelUrls.forEach(URL.revokeObjectURL);
+    console.error('Could not load selected 3D file:', error);
+    alert(`${t('modelError')}: ${file.name}\n\n${state.language === 'ru' ? 'Поддерживаются GLB, GLTF, OBJ и STL. Для GLTF вместе с файлом модели выберите также связанные файлы.' : 'Supported formats are GLB, GLTF, OBJ, and STL. For GLTF, also select the model’s linked resource files.'}`);
+  }
+}
+function closeLocalModel(rerender = true) {
+  if (importedModel) {
+    importedModel.parent?.remove(importedModel);
+    disposeObject(importedModel);
+    importedModel = null;
+  }
+  importedModelName = '';
+  importedModelUrls.forEach(URL.revokeObjectURL);
+  importedModelUrls = [];
+  if (rerender) render();
 }
 function createScene(host) {
   scene = new THREE.Scene();
@@ -1019,15 +1116,21 @@ function pointerDown(event) {
   raycaster.setFromCamera(pointer, camera);
   const roots = [...movable.values()].map(item => item.group);
   const hit = raycaster.intersectObjects(roots, true)[0];
-  if (!hit) { selectedKey = null; render(); return; }
+  if (!hit) {
+    selectedKey = null;
+    renderAfterPointer = true;
+    setHoveredObject(null);
+    return;
+  }
   let root = hit.object;
   while (root && !root.userData.moveKey) root = root.parent;
   if (!root) return;
   selectedKey = root.userData.moveKey;
   const item = movable.get(selectedKey), point = floorPoint(event);
   dragging = { key: selectedKey, dx: item.data.x - point.x, dz: item.data.z - point.z, moved: false };
+  renderAfterPointer = true;
   renderer.domElement.style.cursor = 'grabbing';
-  controls.enabled = false; render();
+  controls.enabled = false;
   setHoveredObject(selectedKey);
 }
 function pointerMove(event) {
@@ -1046,10 +1149,16 @@ function pointerMove(event) {
   updateDimensions(); updateCollisions(); updateMiniPlan();
 }
 function pointerUp() {
-  if (!dragging) return;
-  if (dragging.moved) saveState();
-  dragging = null; controls.enabled = true;
+  if (dragging?.moved) saveState();
+  if (!dragging && !renderAfterPointer) return;
+  dragging = null;
+  controls.enabled = true;
   renderer.domElement.style.cursor = hoveredKey ? 'pointer' : 'grab';
+  if (renderAfterPointer) {
+    renderAfterPointer = false;
+    render();
+    setHoveredObject(selectedKey);
+  }
 }
 function updateHoveredObject(event) {
   if (!renderer || !raycaster || !pointer) return;
