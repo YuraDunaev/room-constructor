@@ -1105,9 +1105,16 @@ body[data-theme="dark"] .mini-plan {
   }
 }
 @media (max-width: 900px) and (min-width: 501px) and (orientation: landscape) {
+  html,
   body {
     min-width: 0;
     min-height: 0;
+    overflow-x: hidden;
+  }
+  #app,
+  .command-bar {
+    min-width: 0;
+    width: 100%;
   }
   .topbar {
     height: 48px;
@@ -1203,9 +1210,16 @@ body[data-theme="dark"] .mini-plan {
   }
 }
 @media (max-width: 500px) {
+  html,
   body {
     min-width: 0;
     min-height: 0;
+    overflow-x: hidden;
+  }
+  #app,
+  .command-bar {
+    min-width: 0;
+    width: 100%;
   }
   .topbar {
     height: 52px;
