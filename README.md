@@ -16,7 +16,9 @@ The side plan keeps the real 5.76 m × 8.395 m room proportions. Its desk and ch
 
 - Inspect the office in a rotatable, zoomable 3D scene. Use the AutoCAD style view cube to choose a face or corner; the cube follows the camera and view changes animate smoothly.
 - Open a local **GLB, glTF, OBJ, or STL** model from the scene toolbar. Files are read in the browser and are not uploaded; glTF files that reference separate assets must be selected together with those assets.
-- Move workstations, the interactive board, and the cabinet by dragging them in the scene. A workstation includes its desk and chair, so they move and rotate together.
+- Move workstations, the interactive board, cabinet, and server trolley by dragging them in the scene. A workstation includes its desk, chair, and desktop equipment, so they move and rotate together.
+- View each workstation with two monitors, keyboard, mouse, mouse pad, headset, and a detailed PC case beneath the desk. The separate server trolley model includes a tower, headset, cable, lime handle, and caster wheels.
+- Explore the room from a first-person view using **W A S D** and the mouse. Press **Esc** to leave the walkthrough; browsers that block pointer lock use mouse movement as a fallback.
 - Select an object in the project tree to highlight it in the scene; hover over objects in the scene to preview the same highlight.
 - Use keyboard shortcuts for camera orbit, object movement and rotation, zoom, saving, and removing the selected workstation. The full list is available in **Settings**, with a compact hint at the bottom of the scene.
 - Add or remove workstations, rename their occupants, change their positions, and rotate selected movable objects from the scene toolbar or properties panel.
@@ -81,6 +83,7 @@ Then open the address printed by Vite Preview. The `dist/` folder is generated o
 
 - **Rotate the scene:** drag on empty scene space. Scroll to zoom, or use the plus and minus controls. Click a face or corner on the view cube to animate to that view.
 - **Move an object:** drag a desk or the interactive board. Select it in the scene or project tree to edit its name, coordinates, or rotation.
+- **Walk through the room:** click **First-person walk**, use **W A S D** to move and the mouse to look around, then press **Esc** to exit.
 - **Add a workstation:** click **Add workspace**. Select the new item to rename it or remove it.
 - **Show measurements and conflicts:** turn on **Dimensions** or **Collisions** in the scene toolbar. A selected movable object displays its measured footprint; collision outlines show available and conflicting space.
 - **Change the room display:** use **Walls and windows** and **Work area** in the toolbar. Use **Settings** for language and theme.

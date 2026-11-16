@@ -248,6 +248,28 @@ button {
   background: var(--surface-soft);
   color: var(--ink);
 }
+.walk-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 7px;
+  color: var(--muted);
+}
+.walk-button svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.walk-button.active,
+.walk-button:hover {
+  border-color: color-mix(in srgb, var(--yellow-deep) 45%, var(--line));
+  background: var(--yellow-soft);
+  color: var(--yellow-deep);
+}
 .rotate-group {
   gap: 4px;
 }
@@ -532,6 +554,30 @@ button {
   text-overflow: ellipsis;
   pointer-events: none;
 }
+.walk-hint {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 24px;
+  display: none;
+  transform: translateX(-50%);
+  padding: 10px 15px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 62%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+  pointer-events: none;
+}
+.walk-hint.visible { display: block; }
+body.walking-mode .scene-title,
+body.walking-mode .scene-hint,
+body.walking-mode .zoom-controls,
+body.walking-mode .view-compass { display: none; }
+body.walking-mode .scene-host canvas { cursor: none; }
 .zoom-controls {
   position: absolute;
   right: 18px;
@@ -901,6 +947,20 @@ body[data-theme="dark"] .mini-plan {
   border-radius: 2px;
   background: #a88638;
   transform: translate(-50%, -50%) rotate(var(--rot, 0rad));
+}
+.mini-plan > .mini-cart {
+  width: 8%;
+  height: 10%;
+  z-index: 3;
+  border: 1px solid #d8dfc4;
+  border-radius: 2px;
+  background: #b5d62b;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0rad));
+}
+.mini-plan > .mini-cart.active {
+  outline: 2px solid #ffbd28;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px #edbf3a55;
 }
 .mini-plan > b.active,
 .mini-plan > i.mini-desk.active {
