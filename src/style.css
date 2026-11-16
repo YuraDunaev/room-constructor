@@ -578,6 +578,22 @@ body.walking-mode .scene-hint,
 body.walking-mode .zoom-controls,
 body.walking-mode .view-compass { display: none; }
 body.walking-mode .scene-host canvas { cursor: none; }
+.walk-reticle {
+  position: absolute;
+  z-index: 7;
+  top: 50%;
+  left: 50%;
+  display: none;
+  width: 5px;
+  height: 5px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 2px 1px #1119;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+body.walking-mode .walk-reticle { display: block; }
 .zoom-controls {
   position: absolute;
   right: 18px;

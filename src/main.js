@@ -18,7 +18,8 @@ const dictionaries = {
     toolbar: 'УПРАВЛЕНИЕ СЦЕНОЙ', add: 'Добавить место', save: 'Сохранить', reset: 'Сбросить',
     openModel: 'Открыть 3D-файл', removeModel: 'Закрыть файл', modelLoaded: 'Файл загружен', modelError: 'Не удалось открыть этот файл',
     view: 'Вид', top: 'Сверху', front: 'Спереди', orbit: '3D', rotate: 'Поворот',
-    walk: 'Прогулка от первого лица', walkHint: 'W A S D — движение · мышь — осмотр · Esc — выйти',
+    walk: 'Прогулка от первого лица',
+    walkHint: 'W A S D — ходить · E — взять/встать/положить · ЛКМ — рисовать/стирать · Esc — отпустить/выйти',
     wallsToggle: 'Стены и окна', dimensions: 'Габариты', collisions: 'Коллизии', zones: 'Рабочая зона',
     workZone: 'Рабочая зона', settings: 'Настройки', properties: 'СВОЙСТВА',
     selection: 'Выбранный объект', none: 'Выберите объект в дереве или сцене', employee: 'Сотрудник',
@@ -35,7 +36,7 @@ const dictionaries = {
     hotkeyZoom: 'Приблизить или отдалить', hotkeyHome: 'Вернуть 3D-вид',
     hotkeySave: 'Сохранить план', hotkeyUndo: 'Отменить последнее изменение объектов',
     hotkeyRedo: 'Повторить отменённое изменение', hotkeyEscape: 'Закрыть настройки',
-    hotkeyWalk: 'Ходить по сцене и осматриваться',
+    hotkeyWalk: 'Первое лицо: WASD ходить, E взаимодействовать, ЛКМ рисовать/стирать, Esc отпустить/выйти',
     sceneKeys: '← ↑ → ↓ камера · Ctrl+←/→ поворот · Shift+стрелки сдвиг · Del удалить',
     m: 'м', sqm: 'м²'
   },
@@ -45,7 +46,8 @@ const dictionaries = {
     board: 'Interactive board', cabinet: 'Cabinet', cart: 'Server trolley', toolbar: 'SCENE CONTROLS', add: 'Add workspace',
     openModel: 'Open 3D file', removeModel: 'Close file', modelLoaded: 'File loaded', modelError: 'Could not open this file',
     save: 'Save', reset: 'Reset', view: 'View', top: 'Top', front: 'Front', orbit: '3D', rotate: 'Rotate',
-    walk: 'First-person walk', walkHint: 'W A S D — move · mouse — look · Esc — exit',
+    walk: 'First-person walk',
+    walkHint: 'W A S D — move · E — pick up/sit/place · left mouse — draw/erase · Esc — release/exit',
     wallsToggle: 'Walls and windows', dimensions: 'Dimensions', collisions: 'Collisions', zones: 'Work area',
     workZone: 'Work area', settings: 'Settings', properties: 'PROPERTIES',
     selection: 'Selected object', none: 'Select an object in the tree or scene', employee: 'Employee',
@@ -60,7 +62,7 @@ const dictionaries = {
     hotkeyDelete: 'Delete selected workspace', hotkeyZoom: 'Zoom in or out', hotkeyHome: 'Return to 3D view',
     hotkeySave: 'Save the plan', hotkeyUndo: 'Undo the last object change',
     hotkeyRedo: 'Redo the undone change', hotkeyEscape: 'Close settings',
-    hotkeyWalk: 'Walk around and look through the scene',
+    hotkeyWalk: 'First person: WASD move, E interact, left mouse draw/erase, Esc release/exit',
     sceneKeys: 'Arrows: orbit · Ctrl+←/→: rotate · Shift+arrows: move · Del: remove',
     m: 'm', sqm: 'm²'
   }
@@ -77,7 +79,7 @@ const startSeats = [
 ].map(seat => ({ ...seat, zone: 'work' }));
 const baseState = {
   seats: startSeats, board: { x: 0, z: .45, rot: 0 }, cabinet: { x: -.28, z: 1.63, rot: 0 },
-  cart: { x: 1.85, z: -2.65, rot: -.18 }, language: 'ru', theme: 'light',
+  cart: { x: 1.85, z: -2.65, rot: -.18 }, boardMarks: [], language: 'ru', theme: 'light',
   showWalls: true, showDimensions: false, showCollisions: false, showZones: false, layoutVersion: 4
 };
 function loadState() {
@@ -99,7 +101,13 @@ let state = loadState();
 const undoHistory = [];
 const redoHistory = [];
 const historyLimit = 100;
-const serializeLayout = () => JSON.stringify({ seats: state.seats, board: state.board, cabinet: state.cabinet, cart: state.cart });
+const serializeLayout = () => JSON.stringify({
+  seats: state.seats,
+  board: state.board,
+  cabinet: state.cabinet,
+  cart: state.cart,
+  boardMarks: state.boardMarks || []
+});
 let lastLayoutSnapshot = serializeLayout();
 let selectedKey = null;
 let scene, camera, renderer, controls, pointerControls, raycaster, pointer, roomGroup;
@@ -116,6 +124,15 @@ let walkCeiling;
 const walkKeys = new Set();
 const walkDirection = new THREE.Vector3();
 let walkPreviousTime = 0;
+let boardRoot;
+let boardSurface;
+let boardMarkerTray;
+let boardDrawings;
+let walkHeld = null;
+let seatedAt = null;
+let currentBoardStroke = null;
+let currentBoardErase = false;
+let boardEraseChanged = false;
 let hoverMaterialBackups = [];
 let cameraMoveFrame = 0;
 let targetCameraQuaternion = null;
@@ -332,6 +349,7 @@ function render() {
       </div></div>
       <div class="scene-hint">${t('sceneKeys')}</div>
       <div class="walk-hint" id="walkHint">${t('walkHint')}</div>
+      <div class="walk-reticle" aria-hidden="true"></div>
       <div class="zoom-controls">
         <button id="zoomIn">＋</button><button id="zoomOut">−</button><button id="homeView">⌂</button>
       </div>
@@ -441,6 +459,7 @@ function bindUi() {
     state.seats = structuredClone(startSeats); state.board = { x: 0, z: .45, rot: 0 };
     state.cabinet = { x: -.28, z: 1.63, rot: 0 };
     state.cart = { x: 1.85, z: -2.65, rot: -.18 };
+    state.boardMarks = [];
     selectedKey = null; saveState(); render();
   };
   app.querySelectorAll('[data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
@@ -520,6 +539,7 @@ function restoreLayoutSnapshot(snapshot) {
   state.board = layout.board;
   state.cabinet = layout.cabinet;
   state.cart = layout.cart || { x: 1.85, z: -2.65, rot: -.18 };
+  state.boardMarks = layout.boardMarks || [];
   lastLayoutSnapshot = snapshot;
   if (selectedKey?.startsWith('seat:') && !state.seats.some(seat => seatKey(seat.id) === selectedKey)) {
     selectedKey = null;
@@ -555,6 +575,9 @@ function toggleWalkMode() {
   }
 
   walkKeys.clear();
+  walkHeld = null;
+  seatedAt = null;
+  pointer.set(0, 0);
   dragging = null;
   renderAfterPointer = false;
   camera.rotation.order = 'YXZ';
@@ -576,6 +599,20 @@ function activateWalkFallback() {
 }
 function exitWalkMode() {
   if (!walkingMode) return;
+  if (currentBoardStroke) finishBoardStroke();
+  if (walkHeld?.type === 'marker') returnMarkerToTray();
+  if (walkHeld?.type === 'eraser') returnBoardEraserToTray();
+  if (walkHeld?.type === 'movable') {
+    walkHeld = null;
+    saveState();
+    updateMiniPlan();
+    updateCollisions();
+    updateDimensions();
+  }
+  if (seatedAt) {
+    camera.position.y = 1.62;
+    seatedAt = null;
+  }
   if (pointerControls?.isLocked) pointerControls.unlock();
   else onWalkUnlock();
 }
@@ -611,15 +648,265 @@ function onWalkUnlock() {
 function handleWalkKeyDown(event) {
   if (!walkingMode) return;
   const key = keyFromCode(event.code);
-  if (!['w', 'a', 's', 'd'].includes(key)) return;
-  walkKeys.add(key);
-  event.preventDefault();
+  if (['w', 'a', 's', 'd'].includes(key)) {
+    walkKeys.add(key);
+    event.preventDefault();
+    return;
+  }
+  if (event.code === 'KeyE' && !event.repeat) {
+    event.preventDefault();
+    interactInWalkMode();
+  }
+  if (event.code === 'KeyR' && walkHeld?.type === 'movable') {
+    event.preventDefault();
+    walkHeld.item.data.rot = (walkHeld.item.data.rot || 0) + Math.PI / 12;
+    walkHeld.item.group.rotation.y = walkHeld.item.data.rot;
+    updateHeldWalkObject();
+  }
 }
 function handleWalkKeyUp(event) {
   walkKeys.delete(keyFromCode(event.code));
 }
 function keyFromCode(code) {
   return code.startsWith('Key') ? code.slice(3).toLowerCase() : code;
+}
+function setWalkPointer(event) {
+  if (!renderer || !pointer) return;
+  if (pointerControls?.isLocked) {
+    pointer.set(0, 0);
+    return;
+  }
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.set((event.clientX - rect.left) / rect.width * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1);
+}
+function findWalkTarget() {
+  if (!raycaster || !pointer) return null;
+  if (pointerControls?.isLocked) pointer.set(0, 0);
+  raycaster.setFromCamera(pointer, camera);
+  const roots = [...movable.values()].map(item => item.group);
+  const hit = raycaster.intersectObjects(roots, true).find(intersection => intersection.distance <= 2.8);
+  if (!hit) return null;
+  let target = hit.object;
+  while (target) {
+    if (target.userData.walkInteraction) {
+      return { type: target.userData.walkInteraction, object: target, intersection: hit };
+    }
+    if (target.userData.moveKey) {
+      return { type: 'movable', key: target.userData.moveKey, object: target, intersection: hit };
+    }
+    target = target.parent;
+  }
+  return null;
+}
+function interactInWalkMode() {
+  if (currentBoardStroke) finishBoardStroke();
+  if (seatedAt) {
+    standFromWalkChair();
+    return;
+  }
+  if (walkHeld?.type === 'marker') {
+    returnMarkerToTray();
+    return;
+  }
+  if (walkHeld?.type === 'eraser') {
+    returnBoardEraserToTray();
+    return;
+  }
+  if (walkHeld?.type === 'movable') {
+    walkHeld = null;
+    updateWalkHintText();
+    saveState();
+    updateMiniPlan();
+    updateCollisions();
+    updateDimensions();
+    return;
+  }
+
+  const target = findWalkTarget();
+  if (!target) return;
+  if (target.type === 'chair') {
+    sitInWalkChair(target.object);
+    return;
+  }
+  if (target.type === 'marker') {
+    pickUpBoardMarker(target.object);
+    return;
+  }
+  if (target.type === 'eraser') {
+    pickUpBoardEraser(target.object);
+    return;
+  }
+  if (target.type === 'movable') {
+    pickUpWalkObject(target.key);
+  }
+}
+function updateWalkHintText() {
+  const hint = app.querySelector('#walkHint');
+  if (!hint) return;
+  const messages = state.language === 'ru'
+    ? { marker: 'Маркер в руке · ЛКМ по доске — рисовать · E — вернуть', eraser: 'Стиратель в руке · ЛКМ по доске — стирать · E — вернуть', object: 'Объект перед тобой · WASD — переместить · R — повернуть · E — поставить', seated: 'Ты сидишь · E — встать', normal: dictionaries.ru.walkHint }
+    : { marker: 'Marker in hand · left mouse on board to draw · E — return', eraser: 'Eraser in hand · left mouse on board to erase · E — return', object: 'Object in front · WASD — move · R — rotate · E — place', seated: 'Seated · E — stand up', normal: dictionaries.en.walkHint };
+  hint.textContent = seatedAt ? messages.seated
+    : walkHeld?.type === 'marker' ? messages.marker
+      : walkHeld?.type === 'eraser' ? messages.eraser
+      : walkHeld?.type === 'movable' ? messages.object : messages.normal;
+}
+function pickUpBoardMarker(marker) {
+  walkHeld = { type: 'marker', object: marker };
+  boardMarkerTray.remove(marker);
+  camera.add(marker);
+  marker.position.set(.2, -.16, -.42);
+  marker.rotation.set(0, 0, Math.PI / 2);
+  updateWalkHintText();
+}
+function returnMarkerToTray() {
+  const marker = walkHeld?.object;
+  if (!marker || !boardMarkerTray) return;
+  camera.remove(marker);
+  boardMarkerTray.add(marker);
+  marker.position.copy(marker.userData.homePosition);
+  marker.rotation.set(0, 0, 0);
+  walkHeld = null;
+  updateWalkHintText();
+}
+function pickUpBoardEraser(eraser) {
+  walkHeld = { type: 'eraser', object: eraser };
+  boardMarkerTray.remove(eraser);
+  camera.add(eraser);
+  eraser.position.set(.2, -.16, -.42);
+  eraser.rotation.set(0, 0, 0);
+  updateWalkHintText();
+}
+function returnBoardEraserToTray() {
+  const eraser = walkHeld?.object;
+  if (!eraser || !boardMarkerTray) return;
+  camera.remove(eraser);
+  boardMarkerTray.add(eraser);
+  eraser.position.copy(eraser.userData.homePosition);
+  eraser.rotation.set(0, 0, 0);
+  walkHeld = null;
+  updateWalkHintText();
+}
+function pickUpWalkObject(key) {
+  const item = movable.get(key);
+  if (!item) return;
+  walkHeld = { type: 'movable', key, item };
+  selectedKey = key;
+  updateWalkHintText();
+  updateHeldWalkObject();
+}
+function walkPlacementIsClear(item, x, z) {
+  const candidate = rectFor({ ...item, data: { ...item.data, x, z } });
+  if (corners(candidate).some(point => Math.abs(point.x) > HALF_W - .03 || Math.abs(point.z) > HALF_L - .03)) return false;
+  if (obstacles.some(obstacle => overlaps(candidate, { ...obstacle, rotation: obstacle.rot || 0 }))) return false;
+  for (const [key, other] of movable) {
+    if (key === walkHeld?.key) continue;
+    if (overlaps(candidate, rectFor(other))) return false;
+  }
+  return true;
+}
+function updateHeldWalkObject() {
+  if (walkHeld?.type !== 'movable') return;
+  const item = walkHeld.item;
+  const forward = camera.getWorldDirection(new THREE.Vector3());
+  forward.y = 0;
+  forward.normalize();
+  const x = camera.position.x + forward.x * .95;
+  const z = camera.position.z + forward.z * .95;
+  if (!walkPlacementIsClear(item, x, z)) return;
+  item.data.x = x;
+  item.data.z = z;
+  item.group.position.set(x, 0, z);
+}
+function sitInWalkChair(chair) {
+  seatedAt = { chair, position: camera.position.clone(), rotation: camera.rotation.clone() };
+  const chairPosition = chair.getWorldPosition(new THREE.Vector3());
+  const side = chair.userData.side || 1;
+  camera.position.set(chairPosition.x + side * .05, 1.05, chairPosition.z);
+  camera.rotation.set(-.035, side * Math.PI / 2, 0, 'YXZ');
+  walkKeys.clear();
+  updateWalkHintText();
+}
+function standFromWalkChair() {
+  if (!seatedAt) return;
+  camera.position.copy(seatedAt.position);
+  camera.position.y = 1.62;
+  camera.rotation.copy(seatedAt.rotation);
+  seatedAt = null;
+  updateWalkHintText();
+}
+function beginBoardStroke() {
+  if (!['marker', 'eraser'].includes(walkHeld?.type) || !boardSurface || !boardRoot) return;
+  if (walkHeld.type === 'eraser') {
+    currentBoardErase = true;
+    boardEraseChanged = false;
+    updateBoardStroke();
+    return;
+  }
+  if (pointerControls?.isLocked) pointer.set(0, 0);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(boardSurface, false)[0];
+  if (!hit || hit.distance > 4) return;
+  boardRoot.updateMatrixWorld(true);
+  const local = boardRoot.worldToLocal(hit.point.clone());
+  const points = [[THREE.MathUtils.clamp(local.x, -.55, .55), THREE.MathUtils.clamp(local.y, .99, 1.75)]];
+  const mark = { color: walkHeld.object.userData.markerColor, points };
+  state.boardMarks.push(mark);
+  currentBoardStroke = { mark, mesh: null };
+}
+function updateBoardStroke() {
+  if ((!currentBoardStroke && !currentBoardErase) || !boardSurface || !boardRoot) return;
+  if (pointerControls?.isLocked) pointer.set(0, 0);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(boardSurface, false)[0];
+  if (!hit || hit.distance > 4) return;
+  boardRoot.updateMatrixWorld(true);
+  const local = boardRoot.worldToLocal(hit.point.clone());
+  if (currentBoardErase) {
+    const previousCount = state.boardMarks.length;
+    state.boardMarks = state.boardMarks.filter(mark =>
+      !mark.points.some(([x, y]) => Math.hypot(local.x - x, local.y - y) < .065)
+    );
+    if (state.boardMarks.length !== previousCount) {
+      boardEraseChanged = true;
+      boardDrawings.children.slice().forEach(disposeObject);
+      boardDrawings.clear();
+      state.boardMarks.forEach(mark => createBoardStrokeMesh(boardDrawings, mark.points, mark.color));
+    }
+    return;
+  }
+  if (local.x < -.555 || local.x > .555 || local.y < .99 || local.y > 1.75) return;
+  const points = currentBoardStroke.mark.points;
+  const previous = points[points.length - 1];
+  if (Math.hypot(local.x - previous[0], local.y - previous[1]) < .008) return;
+  points.push([local.x, local.y]);
+  if (currentBoardStroke.mesh) {
+    boardDrawings.remove(currentBoardStroke.mesh);
+    currentBoardStroke.mesh.geometry.dispose();
+    currentBoardStroke.mesh.material.dispose();
+  }
+  currentBoardStroke.mesh = createBoardStrokeMesh(boardDrawings, points, currentBoardStroke.mark.color);
+}
+function finishBoardStroke() {
+  if (currentBoardErase) {
+    if (boardEraseChanged) saveState();
+    currentBoardErase = false;
+    boardEraseChanged = false;
+    return;
+  }
+  if (!currentBoardStroke) return;
+  if (currentBoardStroke.mark.points.length < 2) {
+    state.boardMarks.pop();
+    if (currentBoardStroke.mesh) {
+      boardDrawings.remove(currentBoardStroke.mesh);
+      currentBoardStroke.mesh.geometry.dispose();
+      currentBoardStroke.mesh.material.dispose();
+    }
+  } else {
+    saveState();
+  }
+  currentBoardStroke = null;
 }
 function walkPointBlocked(x, z) {
   const radius = .22;
@@ -632,27 +919,36 @@ function walkPointBlocked(x, z) {
     return Math.abs(localX) < rect.width / 2 + radius && Math.abs(localZ) < rect.depth / 2 + radius;
   };
   if (obstacles.some(obstacle => intersects({ ...obstacle, rotation: obstacle.rot || 0 }))) return true;
-  return [...movable.values()].some(item => intersects(rectFor(item)));
+  return [...movable.entries()].some(([key, item]) => key !== walkHeld?.key && intersects(rectFor(item)));
 }
 function updateWalkMovement(now) {
   if (!walkingMode) return;
+  if (seatedAt) return;
   const delta = Math.min((now - walkPreviousTime) / 1000, .05);
   walkPreviousTime = now;
   const forwardInput = Number(walkKeys.has('w')) - Number(walkKeys.has('s'));
   const rightInput = Number(walkKeys.has('d')) - Number(walkKeys.has('a'));
-  if (!forwardInput && !rightInput) return;
-
-  const forward = camera.getWorldDirection(walkDirection);
-  forward.y = 0; forward.normalize();
-  const right = forward.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
-  const movement = forward.multiplyScalar(forwardInput).add(right.multiplyScalar(rightInput)).normalize().multiplyScalar(2.4 * delta);
-  const nextX = camera.position.x + movement.x;
-  const nextZ = camera.position.z + movement.z;
-  if (!walkPointBlocked(nextX, camera.position.z)) camera.position.x = nextX;
-  if (!walkPointBlocked(camera.position.x, nextZ)) camera.position.z = nextZ;
+  if (forwardInput || rightInput) {
+    const forward = camera.getWorldDirection(walkDirection);
+    forward.y = 0;
+    forward.normalize();
+    const right = forward.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
+    const movement = forward.multiplyScalar(forwardInput).add(right.multiplyScalar(rightInput))
+      .normalize().multiplyScalar(2.4 * delta);
+    const nextX = camera.position.x + movement.x;
+    const nextZ = camera.position.z + movement.z;
+    if (!walkPointBlocked(nextX, camera.position.z)) camera.position.x = nextX;
+    if (!walkPointBlocked(camera.position.x, nextZ)) camera.position.z = nextZ;
+  }
+  updateHeldWalkObject();
 }
 function handleWalkMouseMove(event) {
-  if (!walkingMode || pointerControls?.isLocked) return;
+  if (!walkingMode) return;
+  if (pointerControls?.isLocked) {
+    pointer.set(0, 0);
+    updateBoardStroke();
+    return;
+  }
   camera.rotation.order = 'YXZ';
   camera.rotation.y -= event.movementX * .0045;
   camera.rotation.x = THREE.MathUtils.clamp(
@@ -661,6 +957,8 @@ function handleWalkMouseMove(event) {
     Math.PI / 2 - .2
   );
   camera.rotation.z = 0;
+  setWalkPointer(event);
+  updateBoardStroke();
 }
 function orbitCameraBy(deltaTheta, deltaPhi) {
   if (!camera || !controls) return;
@@ -1330,8 +1628,11 @@ function makeBlackHole(parent, x, shelfTop, z) {
     blackHoleDisk.add(segment);
   });
 }
-function makeChair(parent, side) {
+function makeChair(parent, side, seatId) {
   const chair = new THREE.Group(); chair.position.set(side * .62, 0, 0);
+  chair.userData.walkInteraction = 'chair';
+  chair.userData.seatId = seatId;
+  chair.userData.side = side;
   const upholstery = mat(0x7d888d), metal = mat(0x555956, .52);
   // This chair sits beside the 600 × 1200 mm desk and faces inward along X.
   box(chair, .48, .13, .48, upholstery, 0, .46, 0);
@@ -1368,7 +1669,7 @@ function makeWorkstation(seat) {
   for (const x of [-.26, .26]) for (const z of [-.55, .55]) box(root, .035, .74, .035, legs, x, .37, z);
   box(root, .34, .045, .1, legs, 0, .53, -.43);
   makeDeskEquipment(root, seat.side || 1);
-  makeChair(root, seat.side || 1); addNameLabel(root, seat.name);
+  makeChair(root, seat.side || 1, seat.id); addNameLabel(root, seat.name);
   movable.set(seatKey(seat.id), { group: root, data: seat, kind: 'seat', width: 1.16, depth: 1.2, localX: (seat.side || 1) * .28, localZ: 0 });
 }
 function makeDeskEquipment(parent, side) {
@@ -1645,18 +1946,92 @@ function disposeObject(object) {
   });
 }
 function makeBoard() {
-  const board = new THREE.Group(); board.position.set(state.board.x, 0, state.board.z); board.rotation.y = state.board.rot || 0;
+  const board = new THREE.Group();
+  board.position.set(state.board.x, 0, state.board.z);
+  board.rotation.y = state.board.rot || 0;
   board.userData.moveKey = 'board';
-  const frame = mat(0x535b59, .34, { metalness: .22 });
+  const frame = mat(0x535b59, .34, { metalness: .32 });
+  const trim = mat(0x858e8d, .38, { metalness: .46 });
+  const foot = mat(0x3e4545, .48, { metalness: .38 });
   box(board, 1.2, .86, .065, frame, 0, 1.37, 0);
-  box(board, 1.11, .77, .018, mat(0xf8f5ec, .25), 0, 1.37, .042);
+  boardSurface = box(board, 1.11, .77, .018, mat(0xf8f5ec, .25), 0, 1.37, .042);
+  boardSurface.userData.drawSurface = true;
+  box(board, 1.13, .025, .055, trim, 0, 1.775, .012);
+  box(board, 1.13, .025, .055, trim, 0, .965, .012);
+  box(board, .025, .82, .055, trim, -.565, 1.37, .012);
+  box(board, .025, .82, .055, trim, .565, 1.37, .012);
   box(board, .07, 1.23, .07, frame, -.43, .62, 0);
   box(board, .07, 1.23, .07, frame, .43, .62, 0);
   box(board, .9, .07, .42, frame, 0, .055, 0);
-  box(board, .55, .045, .07, frame, 0, .48, 0);
+  box(board, .55, .045, .07, trim, 0, .48, 0);
+
+  // A front-facing marker tray with a raised rail and four colored dry-erase markers.
+  boardMarkerTray = new THREE.Group();
+  boardMarkerTray.name = 'Marker tray';
+  box(boardMarkerTray, .96, .035, .16, frame, 0, .935, .105);
+  box(boardMarkerTray, .96, .022, .018, trim, 0, .961, .181);
+  for (let index = 0; index < 4; index++) {
+    box(boardMarkerTray, .014, .01, .08, trim, -.36 + index * .24, .958, .1);
+  }
+  board.add(boardMarkerTray);
+
+  const markerColors = [0x263033, 0xd9473f, 0x3678d2, 0x2e9a68];
+  for (let index = 0; index < markerColors.length; index++) {
+    const color = markerColors[index];
+    const marker = new THREE.Group();
+    marker.userData.walkInteraction = 'marker';
+    marker.userData.markerColor = color;
+    marker.userData.markerId = index;
+    marker.position.set(-.33 + index * .22, .976, .105);
+    const barrel = cylinder(marker, .012, .012, .145, mat(color, .34), 0, 0, 0, 14);
+    barrel.rotation.z = Math.PI / 2;
+    for (const end of [-1, 1]) {
+      const cap = cylinder(marker, .013, .013, .025, mat(end < 0 ? 0x303638 : color, .34), end * .078, 0, 0, 14);
+      cap.rotation.z = Math.PI / 2;
+    }
+    box(marker, .028, .018, .004, mat(0xf0e8d8, .62), 0, .012, .014);
+    marker.userData.homePosition = marker.position.clone();
+    boardMarkerTray.add(marker);
+  }
+
+  const eraser = new THREE.Group();
+  eraser.name = 'Board eraser';
+  eraser.userData.walkInteraction = 'eraser';
+  box(eraser, .105, .055, .07, mat(0xe5e1d7, .5), 0, .028, 0);
+  box(eraser, .105, .012, .07, mat(0x4c77ad, .42), 0, -.005, 0);
+  eraser.position.set(.44, .978, .105);
+  eraser.userData.homePosition = eraser.position.clone();
+  boardMarkerTray.add(eraser);
+
+  boardDrawings = new THREE.Group();
+  boardDrawings.name = 'Board drawings';
+  board.add(boardDrawings);
+  (state.boardMarks || []).forEach(mark => createBoardStrokeMesh(boardDrawings, mark.points, mark.color));
+
+  for (const x of [-.43, .43]) {
+    for (const y of [.1, 1.37, 1.76]) {
+      const fastener = new THREE.Mesh(new THREE.SphereGeometry(.018, 10, 8), trim);
+      fastener.position.set(x, y, .047);
+      board.add(fastener);
+    }
+    cylinder(board, .04, .04, .08, foot, x, .1, 0, 12);
+  }
+
+  boardRoot = board;
   board.visible = !importedModel;
   scene.add(board);
   movable.set('board', { group: board, data: state.board, kind: 'board', width: 1.2, depth: .2, localX: 0, localZ: 0 });
+}
+function createBoardStrokeMesh(parent, points, color) {
+  if (!points || points.length < 2) return null;
+  const path = points.map(([x, y]) => new THREE.Vector3(x, y, .054));
+  const curve = new THREE.CatmullRomCurve3(path);
+  const geometry = new THREE.TubeGeometry(curve, Math.max(8, points.length * 3), .006, 5, false);
+  const material = new THREE.MeshBasicMaterial({ color, depthTest: false, toneMapped: false });
+  const stroke = new THREE.Mesh(geometry, material);
+  stroke.renderOrder = 5;
+  parent.add(stroke);
+  return stroke;
 }
 function makeCabinet() {
   const cabinet = new THREE.Group();
@@ -2002,6 +2377,10 @@ function floorPoint(event) {
 function pointerDown(event) {
   if (walkingMode) {
     event.preventDefault();
+    if (event.button === 0) {
+      setWalkPointer(event);
+      beginBoardStroke();
+    }
     return;
   }
   if (event.button !== 0) return;
@@ -2029,7 +2408,11 @@ function pointerDown(event) {
   setHoveredObject(selectedKey);
 }
 function pointerMove(event) {
-  if (walkingMode) return;
+  if (walkingMode) {
+    setWalkPointer(event);
+    updateBoardStroke();
+    return;
+  }
   if (!dragging) {
     updateHoveredObject(event);
     return;
@@ -2045,7 +2428,10 @@ function pointerMove(event) {
   updateDimensions(); updateCollisions(); updateMiniPlan();
 }
 function pointerUp() {
-  if (walkingMode) return;
+  if (walkingMode) {
+    finishBoardStroke();
+    return;
+  }
   if (dragging?.moved) saveState();
   if (!dragging && !renderAfterPointer) return;
   dragging = null;
