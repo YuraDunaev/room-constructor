@@ -1,100 +1,71 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { parseLocalModel } from './model-importer.js';
+import { createGeometryTools } from './geometry-tools.js';
+import { createFurnitureFactory } from './furniture-factory.js';
+import { createKeyboardShortcutHandler } from './keyboard-shortcuts.js';
 import './style.css';
+import { createKitchenBuilder } from './kitchen.js';
+import { dictionaries } from './i18n.js';
+import {
+  ROOM, HALF_W, HALF_L, KITCHEN, KITCHEN_INNER_X, KITCHEN_RIGHT, KITCHEN_DOORS,
+  KITCHEN_MOVABLES, KITCHEN_Z_OFFSET,
+  SITE_CENTER_X, SITE_CENTER_Z, KITCHEN_WORLD_LEFT,
+  KITCHEN_WORLD_TOP, ENTRY, startSeats, baseState
+} from './config.js';
 
-const ROOM = { width: 5.76, length: 8.395, wallHeight: 2.8 };
-const HALF_W = ROOM.width / 2;
-const HALF_L = ROOM.length / 2;
-const ENTRY = { width: 1.25, centerX: 1.25, height: 2.2 };
-const dictionaries = {
-  ru: {
-    office: 'План офиса', project: 'Проект помещения', hierarchy: 'СТРУКТУРА ПРОЕКТА',
-    room: 'Помещение', shell: 'Конструкции', walls: 'Стены', windows: 'Окна', columns: 'Колонны',
-    furniture: 'Мебель', seats: 'Рабочие места', board: 'Интерактивная доска', cabinet: 'Шкаф', cart: 'Тележка с сервером',
-    toolbar: 'УПРАВЛЕНИЕ СЦЕНОЙ', add: 'Добавить место', save: 'Сохранить', reset: 'Сбросить',
-    openModel: 'Открыть 3D-файл', removeModel: 'Закрыть файл', modelLoaded: 'Файл загружен', modelError: 'Не удалось открыть этот файл',
-    view: 'Вид', top: 'Сверху', front: 'Спереди', orbit: '3D', rotate: 'Поворот',
-    walk: 'Прогулка от первого лица',
-    walkHint: 'W A S D — ходить · E — взять/встать/положить · ЛКМ — рисовать/стирать · Esc — отпустить/выйти',
-    wallsToggle: 'Стены и окна', dimensions: 'Габариты', collisions: 'Коллизии', zones: 'Рабочая зона',
-    workZone: 'Рабочая зона', settings: 'Настройки', properties: 'СВОЙСТВА',
-    selection: 'Выбранный объект', none: 'Выберите объект в дереве или сцене', employee: 'Сотрудник',
-    placeholder: 'Имя сотрудника', location: 'Расположение', x: 'X', z: 'Z', remove: 'Удалить место',
-    area: 'Площадь', desks: 'Мест', empty: 'Свободное место', settingsTitle: 'Настройки приложения',
-    appearance: 'Оформление', light: 'Светлая', dark: 'Тёмная', language: 'Язык', russian: 'Русский',
-    english: 'English', close: 'Закрыть', saved: 'План сохранён', movable: 'ПОДВИЖНЫЙ ОБЪЕКТ',
-    resetConfirm: 'Вернуть начальное расположение по чертежу?', local: 'Сохранение в этом браузере',
-    roomDims: 'Размер помещения', totalArea: 'Общая площадь', objectDims: 'Габариты объекта', tableDims: 'Стол',
-    newSeat: 'Новое место', rotateLeft: 'Повернуть влево', rotateRight: 'Повернуть вправо',
-    compassTop: 'ВЕРХ', compassWcs: 'МСК', hotkeys: 'Горячие клавиши',
-    hotkeyCamera: 'Повернуть камеру', hotkeyRotate: 'Поворот выбранного объекта на 15°',
-    hotkeyMove: 'Перемещение выбранного объекта на 10 см', hotkeyDelete: 'Удалить выбранное рабочее место',
-    hotkeyZoom: 'Приблизить или отдалить', hotkeyHome: 'Вернуть 3D-вид',
-    hotkeySave: 'Сохранить план', hotkeyUndo: 'Отменить последнее изменение объектов',
-    hotkeyRedo: 'Повторить отменённое изменение', hotkeyEscape: 'Закрыть настройки',
-    hotkeyWalk: 'Первое лицо: WASD ходить, E взаимодействовать, ЛКМ рисовать/стирать, Esc отпустить/выйти',
-    sceneKeys: '← ↑ → ↓ камера · Ctrl+←/→ поворот · Shift+стрелки сдвиг · Del удалить',
-    m: 'м', sqm: 'м²'
-  },
-  en: {
-    office: 'Office plan', project: 'Room project', hierarchy: 'PROJECT TREE', room: 'Room', shell: 'Building shell',
-    walls: 'Walls', windows: 'Windows', columns: 'Columns', furniture: 'Furniture', seats: 'Workspaces',
-    board: 'Interactive board', cabinet: 'Cabinet', cart: 'Server trolley', toolbar: 'SCENE CONTROLS', add: 'Add workspace',
-    openModel: 'Open 3D file', removeModel: 'Close file', modelLoaded: 'File loaded', modelError: 'Could not open this file',
-    save: 'Save', reset: 'Reset', view: 'View', top: 'Top', front: 'Front', orbit: '3D', rotate: 'Rotate',
-    walk: 'First-person walk',
-    walkHint: 'W A S D — move · E — pick up/sit/place · left mouse — draw/erase · Esc — release/exit',
-    wallsToggle: 'Walls and windows', dimensions: 'Dimensions', collisions: 'Collisions', zones: 'Work area',
-    workZone: 'Work area', settings: 'Settings', properties: 'PROPERTIES',
-    selection: 'Selected object', none: 'Select an object in the tree or scene', employee: 'Employee',
-    placeholder: 'Employee name', location: 'Position', x: 'X', z: 'Z', remove: 'Remove workspace',
-    area: 'Area', desks: 'Workspaces', empty: 'Available', settingsTitle: 'App settings', appearance: 'Appearance',
-    light: 'Light', dark: 'Dark', language: 'Language', russian: 'Русский', english: 'English', close: 'Close',
-    saved: 'Layout saved', movable: 'MOVABLE OBJECT', resetConfirm: 'Restore the original layout from the blueprint?',
-    local: 'Saved in this browser', roomDims: 'Room dimensions', totalArea: 'Total area', objectDims: 'Object dimensions', tableDims: 'Desk',
-    newSeat: 'New workspace', rotateLeft: 'Rotate left', rotateRight: 'Rotate right', compassTop: 'TOP',
-    compassWcs: 'WCS', hotkeys: 'Keyboard shortcuts', hotkeyCamera: 'Orbit the camera',
-    hotkeyRotate: 'Rotate selected object by 15°', hotkeyMove: 'Move selected object by 10 cm',
-    hotkeyDelete: 'Delete selected workspace', hotkeyZoom: 'Zoom in or out', hotkeyHome: 'Return to 3D view',
-    hotkeySave: 'Save the plan', hotkeyUndo: 'Undo the last object change',
-    hotkeyRedo: 'Redo the undone change', hotkeyEscape: 'Close settings',
-    hotkeyWalk: 'First person: WASD move, E interact, left mouse draw/erase, Esc release/exit',
-    sceneKeys: 'Arrows: orbit · Ctrl+←/→: rotate · Shift+arrows: move · Del: remove',
-    m: 'm', sqm: 'm²'
-  }
-};
-const startSeats = [
-  { id: 's1', name: 'Сергей', x: -1.53, z: -1.1975, rot: 0, side: -1 },
-  { id: 's2', name: 'Олег', x: 1.53, z: -1.1975, rot: 0, side: 1 },
-  { id: 's3', name: 'Юра', x: -1.53, z: 1.2025, rot: 0, side: -1 },
-  { id: 's4', name: 'Юля', x: 1.53, z: 1.2025, rot: 0, side: 1 },
-  { id: 's5', name: 'Богдан', x: -1.53, z: 3.6025, rot: 0, side: -1 },
-  { id: 's6', name: 'Никита', x: -.93, z: 3.6025, rot: 0, side: 1 },
-  { id: 's7', name: 'Илья', x: .93, z: 3.6025, rot: 0, side: -1 },
-  { id: 's8', name: 'Даша', x: 1.53, z: 3.6025, rot: 0, side: 1 }
-].map(seat => ({ ...seat, zone: 'work' }));
-const baseState = {
-  seats: startSeats, board: { x: 0, z: .45, rot: 0 }, cabinet: { x: -.28, z: 1.63, rot: 0 },
-  cart: { x: 1.85, z: -2.65, rot: -.18 }, boardMarks: [], language: 'ru', theme: 'light',
-  showWalls: true, showDimensions: false, showCollisions: false, showZones: false, layoutVersion: 4
-};
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem('room-layout') || '{}');
-    const savedSeats = saved.layoutVersion === 4 && Array.isArray(saved.seats)
-      ? saved.seats
-      : startSeats.map((seat, index) => ({ ...seat, name: saved.seats?.[index]?.name || seat.name }));
+    let savedSeats;
+    if ([6, 7, 8, 9].includes(saved.layoutVersion) && Array.isArray(saved.seats)) {
+      savedSeats = saved.seats;
+    } else if (saved.layoutVersion === 5 && Array.isArray(saved.seats)) {
+      savedSeats = saved.seats.map(seat => {
+        const correctedSeat = startSeats.find(item => item.id === seat.id);
+        return ['s2', 's4'].includes(seat.id) && correctedSeat
+          ? { ...seat, x: correctedSeat.x, z: correctedSeat.z, side: correctedSeat.side }
+          : seat;
+      });
+    } else {
+      savedSeats = startSeats.map((seat, index) => ({
+        ...seat,
+        name: saved.seats?.[index]?.name || seat.name
+      }));
+    }
     const seats = savedSeats.map(seat => seat.name === 'Новый БИМщик' ? { ...seat, name: 'Олег' } : seat);
     if (seats.some((seat, index) => seat.name !== savedSeats[index].name)) {
       try {
-        localStorage.setItem('room-layout', JSON.stringify({ ...saved, seats, layoutVersion: 4 }));
+        localStorage.setItem('room-layout', JSON.stringify({ ...saved, seats, layoutVersion: 9 }));
       } catch { /* Keep the migrated name in memory when storage is unavailable. */ }
     }
-    return { ...baseState, ...saved, seats, layoutVersion: 4 };
+    if (saved.layoutVersion !== 9) {
+      try {
+        const cabinet = saved.layoutVersion >= 8
+          ? saved.cabinet || baseState.cabinet
+          : baseState.cabinet;
+        localStorage.setItem('room-layout', JSON.stringify({
+          ...baseState,
+          ...saved,
+          seats,
+          cabinet,
+          kitchenObjects: saved.layoutVersion === 9 ? saved.kitchenObjects || {} : {},
+          layoutVersion: 9
+        }));
+      } catch { /* Keep the migrated layout in memory when storage is unavailable. */ }
+    }
+    const cabinet = saved.layoutVersion >= 8
+      ? saved.cabinet || baseState.cabinet
+      : baseState.cabinet;
+    return {
+      ...baseState,
+      ...saved,
+      seats,
+      cabinet,
+      kitchenObjects: saved.layoutVersion === 9 ? saved.kitchenObjects || {} : {},
+      layoutVersion: 9
+    };
   } catch { return structuredClone(baseState); }
 }
 let state = loadState();
@@ -106,6 +77,7 @@ const serializeLayout = () => JSON.stringify({
   board: state.board,
   cabinet: state.cabinet,
   cart: state.cart,
+  kitchenObjects: state.kitchenObjects || {},
   boardMarks: state.boardMarks || []
 });
 let lastLayoutSnapshot = serializeLayout();
@@ -121,6 +93,8 @@ let importedModelName = '';
 let blackHoleDisk;
 let walkingMode = false;
 let walkCeiling;
+let kitchenCeiling;
+let kitchenGroup;
 const walkKeys = new Set();
 const walkDirection = new THREE.Vector3();
 let walkPreviousTime = 0;
@@ -133,11 +107,15 @@ let seatedAt = null;
 let currentBoardStroke = null;
 let currentBoardErase = false;
 let boardEraseChanged = false;
+let walkTouchLook = null;
+let walkJoystickPointerId = null;
+let mobileDrawHeld = false;
 let hoverMaterialBackups = [];
 let cameraMoveFrame = 0;
 let targetCameraQuaternion = null;
 const movable = new Map();
 const obstacles = [];
+const walkDoors = [];
 const app = document.querySelector('#app');
 const t = key => dictionaries[state.language][key];
 const saveState = () => {
@@ -153,6 +131,19 @@ const saveState = () => {
   localStorage.setItem('room-layout', JSON.stringify(persistentState));
 };
 const seatKey = id => `seat:${id}`;
+const { mat, box, cylinder, addCable, addLine, disposeObject } = createGeometryTools();
+const furnitureFactory = createFurnitureFactory({
+  mat, box, cylinder, addCable,
+  getState: () => state,
+  getScene: () => scene,
+  getFurnitureGroup: () => furnitureGroup,
+  getImportedModel: () => importedModel,
+  getMovable: () => movable,
+  seatKey,
+  translate: key => t(key),
+  HALF_W
+});
+
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, char => ({
@@ -164,6 +155,9 @@ function getSelected() {
   if (selectedKey === 'board') return state.board;
   if (selectedKey === 'cabinet') return state.cabinet;
   if (selectedKey === 'cart') return state.cart;
+  if (selectedKey?.startsWith('kitchen:')) {
+    return state.kitchenObjects?.[selectedKey.slice('kitchen:'.length)] || null;
+  }
   return getSeat();
 }
 function selectedAngle() {
@@ -255,6 +249,30 @@ function renderProperties() {
       <label>${t('z')}<input id="coordZ" type="number" step="0.05" value="${state.cart.z.toFixed(2)}"></label>
     </div><div class="property-row"><span>${t('objectDims')}</span><b>0.72 × 0.92 ${t('m')}</b></div>
   </section>`;
+  if (selectedKey?.startsWith('kitchen:')) {
+    const item = movable.get(selectedKey);
+    const label = kitchenMovableLabel(item);
+    return `<section class="object-properties">
+      <div class="selected-card"><span class="object-avatar">▰</span>
+        <div><b>${escapeHtml(label)}</b><small>${t('movable')}</small></div>
+      </div>
+      <div class="section-label">${t('location')}</div>
+      <div class="coordinates">
+        <label>${t('x')}<input id="coordX" type="number" step="0.05" value="${item.data.x.toFixed(2)}"></label>
+        <label>${t('z')}<input id="coordZ" type="number" step="0.05" value="${item.data.z.toFixed(2)}"></label>
+      </div>
+      <div class="property-row"><span>${t('objectDims')}</span>
+        <b>${item.width.toFixed(2)} × ${item.depth.toFixed(2)} ${t('m')}</b></div>
+    </section>`;
+  }
+  if (selectedKey === 'kitchen') {
+    const kitchenArea = (KITCHEN.width * KITCHEN.length - KITCHEN.notchWidth * KITCHEN.pantryLength).toFixed(1);
+    const pantryArea = (KITCHEN.notchWidth * KITCHEN.pantryLength).toFixed(1);
+    const note = state.language === 'ru'
+      ? `Г-образная площадь кухни ≈ ${kitchenArea} м², подсобка ≈ ${pantryArea} м². Размеры предварительные; обновите параметры KITCHEN после замеров.`
+      : `L-shaped kitchen area ≈ ${kitchenArea} m², utility room ≈ ${pantryArea} m². Estimated; update KITCHEN after measuring.`;
+    return `<div class="static-note">⌑<p>${note}</p></div>`;
+  }
   if (['walls', 'windows', 'columns'].includes(selectedKey)) {
     const note = state.language === 'ru' ? 'Элемент помещения фиксирован.' : 'This room element is fixed in place.';
     return `<div class="static-note">⌑<p>${note}</p></div>`;
@@ -265,6 +283,11 @@ function renderTree() {
   const seatItems = state.seats.map((seat, index) => treeItem(
     seatKey(seat.id), '▱', seat.name || t('empty'), String(index + 1).padStart(2, '0')
   )).join('');
+  const kitchenItems = KITCHEN_MOVABLES.map(item => treeItem(
+    `kitchen:${item.id}`,
+    '▰',
+    kitchenMovableLabel({ ...item, id: item.id })
+  )).join('');
   return `<details open>
     <summary><i>⌄</i>▣　${t('room')}</summary>
     <details open class="tree-nested">
@@ -272,6 +295,11 @@ function renderTree() {
       ${treeItem('walls', '▤', t('walls'))}
       ${treeItem('windows', '▦', t('windows'))}
       ${treeItem('columns', '▰', t('columns'), '2')}
+      ${treeItem('kitchen', '◫', t('kitchen'))}
+      <details open class="tree-nested">
+        <summary><i>⌄</i>▦　${t('kitchenFurniture')}<small>${KITCHEN_MOVABLES.length}</small></summary>
+        ${kitchenItems}
+      </details>
     </details>
     <details open class="tree-nested">
       <summary><i>⌄</i>▦　${t('furniture')}<small>${state.seats.length + 3}</small></summary>
@@ -284,10 +312,19 @@ function treeItem(key, icon, label, badge = '') {
     <i>${icon}</i><span>${escapeHtml(label)}</span>${badge ? `<small>${badge}</small>` : ''}
   </button>`;
 }
+function kitchenMovableLabel(item) {
+  const label = t(item.nameKey);
+  const tableNumber = item.id?.match(/^dining-table-(\d+)$/)?.[1];
+  return tableNumber ? `${label} ${tableNumber}` : label;
+}
 function render() {
   document.documentElement.lang = state.language;
   document.body.dataset.theme = state.theme;
   const selected = getSelected();
+  const selectedKitchenItem = movable.get(selectedKey);
+  const selectedKitchenLabel = selectedKitchenItem?.kind === 'kitchen'
+    ? kitchenMovableLabel(selectedKitchenItem)
+    : null;
   app.innerHTML = `<header class="topbar">
     <div class="brand">
       <div class="brand-mark">R<span>·</span></div>
@@ -350,6 +387,16 @@ function render() {
       <div class="scene-hint">${t('sceneKeys')}</div>
       <div class="walk-hint" id="walkHint">${t('walkHint')}</div>
       <div class="walk-reticle" aria-hidden="true"></div>
+      <div class="walk-mobile-controls" id="walkMobileControls" aria-label="${escapeHtml(t('walk'))}">
+        <div class="walk-joystick" id="walkJoystick" role="application" aria-label="${escapeHtml(t('walk'))}">
+          <span class="walk-joystick-thumb"></span>
+        </div>
+        <div class="walk-mobile-actions">
+          <button type="button" id="walkInteract" aria-label="${escapeHtml(t('walkInteract'))}" title="${escapeHtml(t('walkInteract'))}">E</button>
+          <button type="button" id="walkDraw" aria-label="${escapeHtml(t('walkDraw'))}" title="${escapeHtml(t('walkDraw'))}">✎</button>
+          <button type="button" id="walkRotate" aria-label="${escapeHtml(t('walkRotate'))}" title="${escapeHtml(t('walkRotate'))}">↻</button>
+        </div>
+      </div>
       <div class="zoom-controls">
         <button id="zoomIn">＋</button><button id="zoomOut">−</button><button id="homeView">⌂</button>
       </div>
@@ -358,9 +405,9 @@ function render() {
     <aside class="properties">
       <div class="properties-heading">
         <div><small>${t('properties')}</small>
-          <h2>${selectedKey === 'board' ? t('board') : selectedKey === 'cabinet' ? t('cabinet') : selectedKey === 'cart' ? t('cart') : selected ? escapeHtml(selected.name || t('empty')) : t('selection')}</h2>
+          <h2>${selectedKitchenLabel ? escapeHtml(selectedKitchenLabel) : selectedKey === 'board' ? t('board') : selectedKey === 'cabinet' ? t('cabinet') : selectedKey === 'cart' ? t('cart') : selectedKey === 'kitchen' ? t('kitchen') : selected ? escapeHtml(selected.name || t('empty')) : t('selection')}</h2>
         </div>
-        <span>${selectedKey === 'board' ? '▭' : selectedKey === 'cabinet' || selectedKey === 'cart' ? '▰' : selected ? '▱' : '⌖'}</span>
+        <span>${selectedKey === 'board' ? '▭' : selectedKey === 'cabinet' || selectedKey === 'cart' ? '▰' : selectedKey === 'kitchen' ? '◫' : selected ? '▱' : '⌖'}</span>
       </div>
       ${renderProperties()}
       <div class="panel-divider"></div>
@@ -457,8 +504,16 @@ function bindUi() {
   app.querySelector('#resetPlan').onclick = () => {
     if (!confirm(t('resetConfirm'))) return;
     state.seats = structuredClone(startSeats); state.board = { x: 0, z: .45, rot: 0 };
-    state.cabinet = { x: -.28, z: 1.63, rot: 0 };
+    state.cabinet = structuredClone(baseState.cabinet);
     state.cart = { x: 1.85, z: -2.65, rot: -.18 };
+    state.kitchenObjects = {};
+    for (const item of movable.values()) {
+      if (item.kind !== 'kitchen') continue;
+      Object.assign(item.data, item.defaultTransform);
+      state.kitchenObjects[item.id] = item.data;
+      item.group.position.set(item.data.x, 0, item.data.z - KITCHEN_Z_OFFSET);
+      item.group.rotation.y = item.data.rot || 0;
+    }
     state.boardMarks = [];
     selectedKey = null; saveState(); render();
   };
@@ -489,6 +544,7 @@ function bindUi() {
   app.querySelector('#zoomOut').onclick = () => zoom(1.18);
   app.querySelector('#homeView').onclick = () => setView('orbit');
   app.querySelector('#walkMode').onclick = toggleWalkMode;
+  bindWalkMobileControls();
   bindSidebarResizer();
 
   const nameInput = app.querySelector('#objectName');
@@ -518,11 +574,105 @@ function bindUi() {
   app.querySelectorAll('[data-language]').forEach(button => button.onclick = () => {
     state.language = button.dataset.language; saveState(); render();
   });
-  window.onkeydown = handleKeyboardShortcuts;
+  window.onkeydown = createKeyboardShortcutHandler({
+    getWalkingMode: () => walkingMode,
+    exitWalkMode,
+    getState: () => state,
+    hasSelection: () => Boolean(selectedKey),
+    clearSelection: () => { selectedKey = null; },
+    render,
+    app,
+    undo: undoLayoutChange,
+    redo: redoLayoutChange,
+    getSelected,
+    rotateSelected,
+    moveSelected: moveSelectedBy,
+    orbitCamera: orbitCameraBy,
+    getSeat,
+    removeWorkspace: removeSelectedWorkspace,
+    zoom,
+    setView
+  });
+}
+function usesTouchWalkControls() {
+  return navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+}
+function bindWalkMobileControls() {
+  const joystick = app.querySelector('#walkJoystick');
+  const thumb = joystick?.querySelector('.walk-joystick-thumb');
+  if (joystick && thumb) {
+    const updateJoystick = event => {
+      if (event.pointerId !== walkJoystickPointerId) return;
+      const rect = joystick.getBoundingClientRect();
+      const radius = rect.width * .34;
+      const dx = event.clientX - (rect.left + rect.width / 2);
+      const dy = event.clientY - (rect.top + rect.height / 2);
+      const length = Math.hypot(dx, dy);
+      const scale = length > radius ? radius / length : 1;
+      const x = dx * scale;
+      const y = dy * scale;
+      thumb.style.transform = `translate(${x}px, ${y}px)`;
+      walkKeys.clear();
+      if (y < -radius * .22) walkKeys.add('w');
+      if (y > radius * .22) walkKeys.add('s');
+      if (x < -radius * .22) walkKeys.add('a');
+      if (x > radius * .22) walkKeys.add('d');
+      event.preventDefault();
+    };
+    const releaseJoystick = event => {
+      if (event.pointerId !== walkJoystickPointerId) return;
+      walkJoystickPointerId = null;
+      walkKeys.clear();
+      thumb.style.transform = 'translate(0, 0)';
+    };
+    joystick.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'mouse' || walkJoystickPointerId !== null) return;
+      walkJoystickPointerId = event.pointerId;
+      joystick.setPointerCapture(event.pointerId);
+      updateJoystick(event);
+    });
+    joystick.addEventListener('pointermove', updateJoystick);
+    joystick.addEventListener('pointerup', releaseJoystick);
+    joystick.addEventListener('pointercancel', releaseJoystick);
+    joystick.addEventListener('lostpointercapture', releaseJoystick);
+  }
+
+  const interact = app.querySelector('#walkInteract');
+  interact?.addEventListener('click', interactInWalkMode);
+
+  const draw = app.querySelector('#walkDraw');
+  const startDrawing = event => {
+    if (!walkingMode || !['marker', 'eraser'].includes(walkHeld?.type)) return;
+    event.preventDefault();
+    mobileDrawHeld = true;
+    pointer.set(0, 0);
+    beginBoardStroke();
+  };
+  const stopDrawing = () => {
+    if (!mobileDrawHeld) return;
+    mobileDrawHeld = false;
+    finishBoardStroke();
+  };
+  draw?.addEventListener('pointerdown', startDrawing);
+  draw?.addEventListener('pointerdown', event => {
+    if (mobileDrawHeld) draw.setPointerCapture(event.pointerId);
+  });
+  draw?.addEventListener('pointerup', stopDrawing);
+  draw?.addEventListener('pointercancel', stopDrawing);
+  draw?.addEventListener('lostpointercapture', stopDrawing);
+
+  app.querySelector('#walkRotate')?.addEventListener('click', () => {
+    if (walkHeld?.type !== 'movable') return;
+    walkHeld.item.data.rot = (walkHeld.item.data.rot || 0) + Math.PI / 12;
+    walkHeld.item.group.rotation.y = walkHeld.item.data.rot;
+    updateHeldWalkObject();
+  });
 }
 function rotateSelected(degrees) {
   const object = getSelected(); if (!object) return;
   object.rot = (object.rot || 0) + THREE.MathUtils.degToRad(degrees);
+  const item = movable.get(selectedKey);
+  if (item) item.group.rotation.y = object.rot;
   saveState(); render();
 }
 function removeSelectedWorkspace() {
@@ -539,6 +689,14 @@ function restoreLayoutSnapshot(snapshot) {
   state.board = layout.board;
   state.cabinet = layout.cabinet;
   state.cart = layout.cart || { x: 1.85, z: -2.65, rot: -.18 };
+  state.kitchenObjects = layout.kitchenObjects || {};
+  for (const item of movable.values()) {
+    if (item.kind !== 'kitchen') continue;
+    item.data = state.kitchenObjects[item.id] || { ...item.defaultTransform };
+    state.kitchenObjects[item.id] = item.data;
+    item.group.position.set(item.data.x, 0, item.data.z - KITCHEN_Z_OFFSET);
+    item.group.rotation.y = item.data.rot || 0;
+  }
   state.boardMarks = layout.boardMarks || [];
   lastLayoutSnapshot = snapshot;
   if (selectedKey?.startsWith('seat:') && !state.seats.some(seat => seatKey(seat.id) === selectedKey)) {
@@ -560,6 +718,17 @@ function redoLayoutChange() {
 function moveSelectedBy(deltaX, deltaZ) {
   const object = getSelected();
   if (!object) return;
+  const item = movable.get(selectedKey);
+  if (item?.kind === 'kitchen') {
+    const rotation = object.rot || 0;
+    const halfX = (Math.abs(Math.cos(rotation)) * item.width + Math.abs(Math.sin(rotation)) * item.depth) / 2;
+    const halfZ = (Math.abs(Math.sin(rotation)) * item.width + Math.abs(Math.cos(rotation)) * item.depth) / 2;
+    object.x = THREE.MathUtils.clamp(object.x + deltaX, KITCHEN_WORLD_LEFT + halfX, KITCHEN_RIGHT - halfX);
+    object.z = THREE.MathUtils.clamp(object.z + deltaZ, -HALF_L + halfZ, KITCHEN_WORLD_TOP - halfZ);
+    item.group.position.set(object.x, 0, object.z - KITCHEN_Z_OFFSET);
+    saveState(); render();
+    return;
+  }
   const [marginX, marginZ] = selectedKey === 'cabinet' ? [.38, .34]
     : selectedKey === 'board' ? [.6, .1] : selectedKey === 'cart' ? [.42, .52] : [.7, .6];
   object.x = THREE.MathUtils.clamp(object.x + deltaX, -HALF_W + marginX, HALF_W - marginX);
@@ -582,10 +751,14 @@ function toggleWalkMode() {
   renderAfterPointer = false;
   camera.rotation.order = 'YXZ';
   camera.position.set(ENTRY.centerX, 1.62, -HALF_L + .72);
-  camera.rotation.set(0, Math.PI, 0, 'YXZ');
+  camera.rotation.set(0, 0, 0, 'YXZ');
   controls.enabled = false;
   walkingMode = true;
   updateWalkToggle(true);
+  if (usesTouchWalkControls()) {
+    activateWalkFallback();
+    return;
+  }
   try {
     const lockAttempt = renderer.domElement.requestPointerLock?.();
     if (lockAttempt?.catch) lockAttempt.catch(activateWalkFallback);
@@ -625,16 +798,25 @@ function onWalkLock() {
   walkingMode = true;
   walkPreviousTime = performance.now();
   walkCeiling.visible = true;
+  if (kitchenCeiling) kitchenCeiling.visible = true;
   document.body.classList.add('walking-mode');
+  document.body.classList.toggle('touch-walk-controls', usesTouchWalkControls());
   updateWalkToggle(true);
   app.querySelector('#walkHint')?.classList.add('visible');
+  updateWalkHintText();
 }
 function onWalkUnlock() {
   const wasWalking = walkingMode;
   walkingMode = false;
   walkKeys.clear();
+  walkTouchLook = null;
+  walkJoystickPointerId = null;
+  mobileDrawHeld = false;
+  app.querySelector('#walkJoystick .walk-joystick-thumb')?.style.setProperty('transform', 'translate(0, 0)');
   if (walkCeiling) walkCeiling.visible = false;
+  if (kitchenCeiling) kitchenCeiling.visible = false;
   document.body.classList.remove('walking-mode');
+  document.body.classList.remove('touch-walk-controls');
   updateWalkToggle(false);
   app.querySelector('#walkHint')?.classList.remove('visible');
   if (!wasWalking || !controls || !camera) return;
@@ -682,15 +864,16 @@ function setWalkPointer(event) {
 }
 function findWalkTarget() {
   if (!raycaster || !pointer) return null;
-  if (pointerControls?.isLocked) pointer.set(0, 0);
+  if (pointerControls?.isLocked || usesTouchWalkControls()) pointer.set(0, 0);
   raycaster.setFromCamera(pointer, camera);
   const roots = [...movable.values()].map(item => item.group);
+  roots.push(...walkDoors.map(door => door.group));
   const hit = raycaster.intersectObjects(roots, true).find(intersection => intersection.distance <= 2.8);
   if (!hit) return null;
   let target = hit.object;
   while (target) {
     if (target.userData.walkInteraction) {
-      return { type: target.userData.walkInteraction, object: target, intersection: hit };
+      return { type: target.userData.walkInteraction, object: target, door: target.userData.walkDoor, intersection: hit };
     }
     if (target.userData.moveKey) {
       return { type: 'movable', key: target.userData.moveKey, object: target, intersection: hit };
@@ -729,6 +912,10 @@ function interactInWalkMode() {
     sitInWalkChair(target.object);
     return;
   }
+  if (target.type === 'door') {
+    toggleWalkDoor(target.door);
+    return;
+  }
   if (target.type === 'marker') {
     pickUpBoardMarker(target.object);
     return;
@@ -741,16 +928,54 @@ function interactInWalkMode() {
     pickUpWalkObject(target.key);
   }
 }
+function toggleWalkDoor(door) {
+  if (!door) return;
+  const closing = door.targetRotation !== door.closedRotation;
+  if (closing) {
+    const candidate = doorRect(door, door.closedRotation);
+    const dx = camera.position.x - candidate.x;
+    const dz = camera.position.z - candidate.z;
+    const cosine = Math.cos(candidate.rotation);
+    const sine = Math.sin(candidate.rotation);
+    const localX = cosine * dx - sine * dz;
+    const localZ = sine * dx + cosine * dz;
+    if (Math.abs(localX) < candidate.width / 2 + .35 && Math.abs(localZ) < candidate.depth / 2 + .35) return;
+  }
+  door.targetRotation = closing ? door.closedRotation : door.openRotation;
+  updateWalkHintText();
+}
+function doorRect(door, rotation = door.group.rotation.y) {
+  const centerOffset = door.width / 2 * (door.direction || 1);
+  return {
+    x: door.hingeX + Math.cos(rotation) * centerOffset,
+    z: door.hingeZ - Math.sin(rotation) * centerOffset,
+    width: door.width,
+    depth: .075,
+    rotation
+  };
+}
+function updateWalkDoors(delta) {
+  for (const door of walkDoors) {
+    const difference = door.targetRotation - door.group.rotation.y;
+    if (Math.abs(difference) < .002) door.group.rotation.y = door.targetRotation;
+    else door.group.rotation.y += difference * Math.min(1, delta * 7.5);
+  }
+}
 function updateWalkHintText() {
   const hint = app.querySelector('#walkHint');
   if (!hint) return;
+  const mobile = usesTouchWalkControls();
   const messages = state.language === 'ru'
-    ? { marker: 'Маркер в руке · ЛКМ по доске — рисовать · E — вернуть', eraser: 'Стиратель в руке · ЛКМ по доске — стирать · E — вернуть', object: 'Объект перед тобой · WASD — переместить · R — повернуть · E — поставить', seated: 'Ты сидишь · E — встать', normal: dictionaries.ru.walkHint }
-    : { marker: 'Marker in hand · left mouse on board to draw · E — return', eraser: 'Eraser in hand · left mouse on board to erase · E — return', object: 'Object in front · WASD — move · R — rotate · E — place', seated: 'Seated · E — stand up', normal: dictionaries.en.walkHint };
+    ? { marker: mobile ? 'Джойстик — ходить · веди сцену пальцем для обзора · ✎ удерживать — рисовать · E — вернуть маркер' : 'Маркер в руке · ЛКМ по доске — рисовать · E — вернуть', eraser: mobile ? 'Джойстик — ходить · ✎ удерживать — стирать · E — вернуть стиратель' : 'Стиратель в руке · ЛКМ по доске — стирать · E — вернуть', object: mobile ? 'Джойстик — двигать предмет · ↻ — повернуть · E — поставить' : 'Объект перед тобой · WASD — переместить · R — повернуть · E — поставить', seated: 'Ты сидишь · E — встать', normal: mobile ? 'Джойстик — ходить · веди сцену пальцем для обзора · E — взаимодействовать' : dictionaries.ru.walkHint }
+    : { marker: mobile ? 'Joystick moves · drag the scene to look · hold ✎ to draw · E returns marker' : 'Marker in hand · left mouse on board to draw · E — return', eraser: mobile ? 'Joystick moves · hold ✎ to erase · E returns eraser' : 'Eraser in hand · left mouse on board to erase · E — return', object: mobile ? 'Joystick moves object · ↻ rotates · E places it' : 'Object in front · WASD — move · R — rotate · E — place', seated: 'Seated · E — stand up', normal: mobile ? 'Joystick moves · drag the scene to look · E interacts' : dictionaries.en.walkHint };
   hint.textContent = seatedAt ? messages.seated
     : walkHeld?.type === 'marker' ? messages.marker
       : walkHeld?.type === 'eraser' ? messages.eraser
       : walkHeld?.type === 'movable' ? messages.object : messages.normal;
+  const drawButton = app.querySelector('#walkDraw');
+  if (drawButton) drawButton.disabled = !['marker', 'eraser'].includes(walkHeld?.type);
+  const rotateButton = app.querySelector('#walkRotate');
+  if (rotateButton) rotateButton.disabled = walkHeld?.type !== 'movable';
 }
 function pickUpBoardMarker(marker) {
   walkHeld = { type: 'marker', object: marker };
@@ -798,7 +1023,15 @@ function pickUpWalkObject(key) {
 }
 function walkPlacementIsClear(item, x, z) {
   const candidate = rectFor({ ...item, data: { ...item.data, x, z } });
-  if (corners(candidate).some(point => Math.abs(point.x) > HALF_W - .03 || Math.abs(point.z) > HALF_L - .03)) return false;
+  const footprintCorners = corners(candidate);
+  const insideOffice = footprintCorners.every(point =>
+    Math.abs(point.x) <= HALF_W - .03 && Math.abs(point.z) <= HALF_L - .03
+  );
+  const insideKitchen = footprintCorners.every(point =>
+    point.x >= KITCHEN_WORLD_LEFT + .03 && point.x <= KITCHEN_RIGHT - .03
+      && point.z >= -HALF_L + .03 && point.z <= KITCHEN_WORLD_TOP - .03
+  );
+  if (item.kind === 'seat' ? !insideOffice : !insideOffice && !insideKitchen) return false;
   if (obstacles.some(obstacle => overlaps(candidate, { ...obstacle, rotation: obstacle.rot || 0 }))) return false;
   for (const [key, other] of movable) {
     if (key === walkHeld?.key) continue;
@@ -817,7 +1050,7 @@ function updateHeldWalkObject() {
   if (!walkPlacementIsClear(item, x, z)) return;
   item.data.x = x;
   item.data.z = z;
-  item.group.position.set(x, 0, z);
+  item.group.position.set(x, 0, z - (item.kind === 'kitchen' ? KITCHEN_Z_OFFSET : 0));
 }
 function sitInWalkChair(chair) {
   seatedAt = { chair, position: camera.position.clone(), rotation: camera.rotation.clone() };
@@ -838,6 +1071,7 @@ function standFromWalkChair() {
 }
 function beginBoardStroke() {
   if (!['marker', 'eraser'].includes(walkHeld?.type) || !boardSurface || !boardRoot) return;
+  if (usesTouchWalkControls()) pointer.set(0, 0);
   if (walkHeld.type === 'eraser') {
     currentBoardErase = true;
     boardEraseChanged = false;
@@ -857,7 +1091,7 @@ function beginBoardStroke() {
 }
 function updateBoardStroke() {
   if ((!currentBoardStroke && !currentBoardErase) || !boardSurface || !boardRoot) return;
-  if (pointerControls?.isLocked) pointer.set(0, 0);
+  if (pointerControls?.isLocked || (usesTouchWalkControls() && mobileDrawHeld)) pointer.set(0, 0);
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObject(boardSurface, false)[0];
   if (!hit || hit.distance > 4) return;
@@ -910,7 +1144,23 @@ function finishBoardStroke() {
 }
 function walkPointBlocked(x, z) {
   const radius = .22;
-  if (x < -HALF_W + radius || x > HALF_W - radius || z < -HALF_L + radius || z > HALF_L - radius) return true;
+  const inOffice = x >= -HALF_W + radius && x <= HALF_W - radius
+    && z >= -HALF_L + radius && z <= HALF_L - radius;
+  const inKitchen = x >= KITCHEN_WORLD_LEFT + radius && x <= KITCHEN_RIGHT - radius
+    && z >= -HALF_L + radius && z <= KITCHEN_WORLD_TOP - radius;
+  // The corridor begins at the office entrance and continues past the pantry to the kitchen door.
+  const inCorridor = x >= -HALF_W + radius && x <= KITCHEN_RIGHT - radius
+    && z >= -HALF_L - 1.8 + radius && z <= -HALF_L + radius;
+  if (!inOffice && !inKitchen && !inCorridor) return true;
+  const crossesConnectingDoorLine = (camera.position.z > -HALF_L && z <= -HALF_L)
+    || (camera.position.z <= -HALF_L && z > -HALF_L);
+  const kitchenDoorways = [
+    KITCHEN_DOORS.pantry,
+    { center: KITCHEN_DOORS.kitchen.center, width: KITCHEN_DOORS.kitchen.width }
+  ];
+  const officeDoor = Math.abs(x - ENTRY.centerX) <= ENTRY.width / 2 - radius;
+  const kitchenDoor = kitchenDoorways.some(door => Math.abs(x - door.center) <= door.width / 2 - radius);
+  if (crossesConnectingDoorLine && !officeDoor && !kitchenDoor) return true;
   const intersects = rect => {
     const dx = x - rect.x, dz = z - rect.z;
     const cosine = Math.cos(rect.rotation || 0), sine = Math.sin(rect.rotation || 0);
@@ -919,6 +1169,7 @@ function walkPointBlocked(x, z) {
     return Math.abs(localX) < rect.width / 2 + radius && Math.abs(localZ) < rect.depth / 2 + radius;
   };
   if (obstacles.some(obstacle => intersects({ ...obstacle, rotation: obstacle.rot || 0 }))) return true;
+  if (walkDoors.some(door => intersects(doorRect(door)))) return true;
   return [...movable.entries()].some(([key, item]) => key !== walkHeld?.key && intersects(rectFor(item)));
 }
 function updateWalkMovement(now) {
@@ -940,7 +1191,25 @@ function updateWalkMovement(now) {
     if (!walkPointBlocked(nextX, camera.position.z)) camera.position.x = nextX;
     if (!walkPointBlocked(camera.position.x, nextZ)) camera.position.z = nextZ;
   }
+  updateWalkDoors(delta);
   updateHeldWalkObject();
+  if (mobileDrawHeld) updateBoardStroke();
+}
+function updateWalkTouchLook(event) {
+  if (!walkTouchLook || event.pointerId !== walkTouchLook.pointerId) return;
+  const deltaX = event.clientX - walkTouchLook.x;
+  const deltaY = event.clientY - walkTouchLook.y;
+  walkTouchLook.x = event.clientX;
+  walkTouchLook.y = event.clientY;
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y -= deltaX * .006;
+  camera.rotation.x = THREE.MathUtils.clamp(
+    camera.rotation.x - deltaY * .006,
+    -Math.PI / 2 + .2,
+    Math.PI / 2 - .2
+  );
+  camera.rotation.z = 0;
+  pointer.set(0, 0);
 }
 function handleWalkMouseMove(event) {
   if (!walkingMode) return;
@@ -987,117 +1256,6 @@ function orbitCameraBy(deltaTheta, deltaPhi) {
   };
   cameraMoveFrame = requestAnimationFrame(animateOrbit);
 }
-function handleKeyboardShortcuts(event) {
-  const code = event.code;
-  if (code === 'Escape') {
-    if (walkingMode) {
-      exitWalkMode();
-      return;
-    }
-    if (state.settingsOpen) {
-      state.settingsOpen = false;
-      render();
-      return;
-    }
-    if (selectedKey) {
-      selectedKey = null;
-      render();
-    }
-    return;
-  }
-  if (walkingMode) return;
-  if (state.settingsOpen || event.altKey || event.metaKey) return;
-  if (event.target instanceof HTMLElement && event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
-
-  if (event.ctrlKey && code === 'KeyS') {
-    event.preventDefault();
-    app.querySelector('#savePlan')?.click();
-    return;
-  }
-  if (event.ctrlKey && !event.shiftKey && code === 'KeyZ') {
-    event.preventDefault();
-    undoLayoutChange();
-    return;
-  }
-  if (event.ctrlKey && code === 'KeyY') {
-    event.preventDefault();
-    redoLayoutChange();
-    return;
-  }
-  if (event.ctrlKey && ['ArrowLeft', 'ArrowRight'].includes(code)) {
-    if (!getSelected()) return;
-    event.preventDefault();
-    rotateSelected(code === 'ArrowLeft' ? -15 : 15);
-    return;
-  }
-  if (event.shiftKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code)) {
-    if (!getSelected()) return;
-    event.preventDefault();
-    const step = .1;
-    const movement = {
-      ArrowLeft: [-step, 0], ArrowRight: [step, 0],
-      ArrowUp: [0, -step], ArrowDown: [0, step]
-    }[code];
-    moveSelectedBy(...movement);
-    return;
-  }
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code)) {
-    event.preventDefault();
-    const orbit = {
-      ArrowLeft: [.18, 0], ArrowRight: [-.18, 0],
-      ArrowUp: [0, -.12], ArrowDown: [0, .12]
-    }[code];
-    orbitCameraBy(...orbit);
-    return;
-  }
-  if (code === 'Delete' && getSeat()) {
-    event.preventDefault();
-    removeSelectedWorkspace();
-    return;
-  }
-  if ((code === 'Equal' && event.shiftKey) || code === 'NumpadAdd') {
-    event.preventDefault();
-    zoom(.84);
-    return;
-  }
-  if (code === 'Minus' || code === 'NumpadSubtract') {
-    event.preventDefault();
-    zoom(1.18);
-    return;
-  }
-  if (code === 'Home') {
-    event.preventDefault();
-    setView('orbit');
-  }
-}
-
-function mat(color, roughness = .72, extra = {}) {
-  return new THREE.MeshStandardMaterial({ color, roughness, ...extra });
-}
-function box(parent, width, height, depth, material, x, y, z) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
-  mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true;
-  parent.add(mesh); return mesh;
-}
-function cylinder(parent, top, bottom, height, material, x, y, z, segments = 12) {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(top, bottom, height, segments), material);
-  mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true;
-  parent.add(mesh); return mesh;
-}
-function addCable(parent, points, material, radius = .006) {
-  const curve = new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(...point)));
-  const cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 32, radius, 7, false), material);
-  cable.castShadow = true;
-  parent.add(cable);
-  return cable;
-}
-function addLine(parent, points, color = 0x514f49, opacity = 1) {
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const mesh = new THREE.Line(geometry, new THREE.LineBasicMaterial({
-    color, transparent: opacity < 1, opacity, depthTest: false
-  }));
-  parent.add(mesh); return mesh;
-}
 
 function initScene() {
   const host = document.querySelector('#scene'); if (!host) return;
@@ -1106,57 +1264,11 @@ function initScene() {
   refreshLayers(); updateDimensions(); updateCollisions();
 }
 async function loadLocalModel(file, selectedFiles = [file]) {
-  const extension = file.name.split('.').pop()?.toLowerCase();
-  const nextModelUrls = [];
   try {
-    let object;
-    if (extension === 'glb' || extension === 'gltf') {
-      const manager = new THREE.LoadingManager();
-      const siblingFiles = new Map(selectedFiles.map(selectedFile => [selectedFile.name, selectedFile]));
-      manager.setURLModifier(url => {
-        const fileName = decodeURIComponent(url.split(/[\\/]/).pop()?.split(/[?#]/)[0] || '');
-        const sibling = siblingFiles.get(fileName);
-        if (!sibling) return url;
-        const objectUrl = URL.createObjectURL(sibling);
-        nextModelUrls.push(objectUrl);
-        return objectUrl;
-      });
-      object = await new Promise((resolve, reject) => {
-        file.arrayBuffer().then(buffer => new GLTFLoader(manager).parse(buffer, '', result => resolve(result.scene), reject), reject);
-      });
-    } else if (extension === 'obj') {
-      object = new OBJLoader().parse(await file.text());
-    } else if (extension === 'stl') {
-      const geometry = new STLLoader().parse(await file.arrayBuffer());
-      geometry.computeVertexNormals();
-      object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xc9c5bb, metalness: .12, roughness: .72 }));
-    } else {
-      throw new Error('Unsupported model format');
-    }
-
+    const result = await parseLocalModel(file, selectedFiles);
     closeLocalModel(false);
-    importedModelUrls = nextModelUrls;
-    object.name = file.name;
-    object.traverse(child => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        if (child.material) {
-          const materials = Array.isArray(child.material) ? child.material : [child.material];
-          materials.forEach(material => { material.side = THREE.DoubleSide; });
-        }
-      }
-    });
-    object.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(object);
-    const size = bounds.getSize(new THREE.Vector3());
-    const largestSide = Math.max(size.x, size.y, size.z);
-    if (!Number.isFinite(largestSide) || largestSide <= 0) throw new Error('The model has no visible geometry');
-    object.position.x -= (bounds.min.x + bounds.max.x) / 2;
-    object.position.z -= (bounds.min.z + bounds.max.z) / 2;
-    object.position.y -= bounds.min.y;
-    object.scale.multiplyScalar(Math.min(1, 4.5 / largestSide));
-    object.position.y += .02;
+    importedModelUrls = result.objectUrls;
+    const { object, size, largestSide } = result;
     scene.add(object);
     importedModel = object;
     importedModelName = file.name;
@@ -1169,7 +1281,6 @@ async function loadLocalModel(file, selectedFiles = [file]) {
     controls.update();
     render();
   } catch (error) {
-    nextModelUrls.forEach(URL.revokeObjectURL);
     console.error('Could not load selected 3D file:', error);
     alert(`${t('modelError')}: ${file.name}\n\n${state.language === 'ru' ? 'Поддерживаются GLB, GLTF, OBJ и STL. Для GLTF вместе с файлом модели выберите также связанные файлы.' : 'Supported formats are GLB, GLTF, OBJ, and STL. For GLTF, also select the model’s linked resource files.'}`);
   }
@@ -1191,7 +1302,7 @@ function createScene(host) {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(state.theme === 'dark' ? 0x20211f : 0xe9eaeb);
   camera = new THREE.PerspectiveCamera(42, host.clientWidth / host.clientHeight, .1, 100);
-  camera.position.set(8.8, 16.2, 10.8);
+  camera.position.set(SITE_CENTER_X + 8.8, 16.2, SITE_CENTER_Z + 10.8);
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(host.clientWidth, host.clientHeight);
@@ -1200,8 +1311,8 @@ function createScene(host) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08;
   host.appendChild(renderer.domElement);
   controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, .2, 0); controls.enableDamping = true;
-  controls.maxPolarAngle = Math.PI * .48; controls.minDistance = 4; controls.maxDistance = 25;
+  controls.target.set(SITE_CENTER_X, .2, SITE_CENTER_Z); controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * .48; controls.minDistance = 4; controls.maxDistance = 38;
   pointerControls = new PointerLockControls(camera, renderer.domElement);
   pointerControls.pointerSpeed = 1.2;
   pointerControls.addEventListener('lock', onWalkLock);
@@ -1210,7 +1321,18 @@ function createScene(host) {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x77716a, 2.15));
   const keyLight = new THREE.DirectionalLight(0xfff1d1, 3.2);
   keyLight.position.set(-5, 12, 7); keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(2048, 2048); scene.add(keyLight);
+  keyLight.shadow.mapSize.set(2048, 2048);
+  keyLight.shadow.camera.left = -20;
+  keyLight.shadow.camera.right = 20;
+  keyLight.shadow.camera.top = 20;
+  keyLight.shadow.camera.bottom = -20;
+  keyLight.shadow.camera.near = .5;
+  keyLight.shadow.camera.far = 60;
+  keyLight.shadow.camera.updateProjectionMatrix();
+  keyLight.shadow.bias = -.00025;
+  keyLight.shadow.normalBias = .025;
+  keyLight.shadow.radius = 2;
+  scene.add(keyLight);
   const fill = new THREE.DirectionalLight(0xffffff, 1.1);
   fill.position.set(5, 8, -4); scene.add(fill);
   roomGroup = new THREE.Group();
@@ -1221,9 +1343,9 @@ function createScene(host) {
   renderer.domElement.addEventListener('pointerdown', pointerDown);
   renderer.domElement.addEventListener('pointermove', pointerMove);
   renderer.domElement.addEventListener('pointerup', pointerUp);
-  renderer.domElement.addEventListener('pointerleave', () => {
+  renderer.domElement.addEventListener('pointerleave', event => {
     if (!dragging) setHoveredObject(null);
-    pointerUp();
+    if (event.pointerType !== 'touch') pointerUp(event);
   });
   window.addEventListener('keydown', handleWalkKeyDown);
   window.addEventListener('keyup', handleWalkKeyUp);
@@ -1237,6 +1359,8 @@ function buildRoom() {
   const carpet = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.width - .2, ROOM.length - .2),
     new THREE.MeshStandardMaterial({ color: 0x777a7d, roughness: 1, metalness: 0 }));
   carpet.rotation.x = -Math.PI / 2; carpet.position.y = -.01; carpet.receiveShadow = true; roomGroup.add(carpet);
+  walkDoors.length = 0;
+  buildConnectingCorridor();
   wallGroup = new THREE.Group(); wallGroup.name = 'Walls'; roomGroup.add(wallGroup);
   windowGroup = new THREE.Group(); windowGroup.name = 'Windows'; roomGroup.add(windowGroup);
   columnGroup = new THREE.Group(); columnGroup.name = 'Columns'; roomGroup.add(columnGroup);
@@ -1250,7 +1374,7 @@ function buildRoom() {
   const leftPier = doorLeft + HALF_W;
   const rightPier = HALF_W - doorRight;
 
-  // The long walls are solid. The entrance and windows are on opposite short walls.
+  // The office is a separate room; the corridor connects it to the kitchen.
   box(wallGroup, .16, ROOM.wallHeight, ROOM.length, walls, -HALF_W - .08, ROOM.wallHeight / 2, 0);
   box(wallGroup, .16, ROOM.wallHeight, ROOM.length, walls, HALF_W + .08, ROOM.wallHeight / 2, 0);
 
@@ -1264,8 +1388,8 @@ function buildRoom() {
   box(wallGroup, .07, ENTRY.height, .09, trim, doorLeft, ENTRY.height / 2, -HALF_L - .025);
   box(wallGroup, .07, ENTRY.height, .09, trim, doorRight, ENTRY.height / 2, -HALF_L - .025);
   box(wallGroup, ENTRY.width + .08, .09, .09, trim, ENTRY.centerX, ENTRY.height, -HALF_L - .025);
-  // The leaf swings across the doorway into the room (positive Z).
-  buildDoorLeaf(doorLeft, -HALF_L - .025, -1.22);
+  // Hinged leaf swings outward into the corridor (negative Z).
+  buildDoorLeaf(doorLeft, -HALF_L - .025, 1.22);
 
   // Window end: low sill, clear glazing, and a continuous lintel.
   box(wallGroup, .38, ROOM.wallHeight, .16, walls, -HALF_W + .19, ROOM.wallHeight / 2, HALF_L + .08);
@@ -1281,6 +1405,51 @@ function buildRoom() {
 
   buildWindows(); buildColumns(); buildZoneOverlay(); buildYuraWallShelf(); buildArchitecturalDetails();
   buildPowerOutlets();
+  const kitchenBuilder = createKitchenBuilder({
+    roomGroup, wallGroup, windowGroup, columnGroup, furnitureGroup, obstacles,
+    mat,
+    box,
+    cylinder,
+    addCable,
+    getKitchenObjectData(id, defaults) {
+      state.kitchenObjects ||= {};
+      state.kitchenObjects[id] ||= { ...defaults };
+      return state.kitchenObjects[id];
+    },
+    registerMovable(key, item) {
+      movable.set(key, item);
+    },
+    registerWalkDoor(door) {
+      door.group.userData.walkInteraction = 'door';
+      door.group.userData.walkDoor = door;
+      walkDoors.push(door);
+    }
+  });
+  ({ group: kitchenGroup, ceiling: kitchenCeiling } = kitchenBuilder.build());
+  windowGroup.traverse(object => {
+    if (!object.isMesh) return;
+    object.castShadow = false;
+    object.receiveShadow = false;
+  });
+}
+function buildConnectingCorridor() {
+  const corridorLeft = -HALF_W;
+  const width = KITCHEN_RIGHT - corridorLeft;
+  const depth = 1.8;
+  const centerX = (corridorLeft + KITCHEN_RIGHT) / 2;
+  const centerZ = -HALF_L - depth / 2;
+  const base = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), mat(0x55595b, .98));
+  base.rotation.x = -Math.PI / 2;
+  base.position.set(centerX, -.04, centerZ);
+  base.receiveShadow = true;
+  roomGroup.add(base);
+
+  const carpet = new THREE.Mesh(new THREE.PlaneGeometry(width - .08, depth - .08),
+    new THREE.MeshStandardMaterial({ color: 0x686b6d, roughness: 1 }));
+  carpet.rotation.x = -Math.PI / 2;
+  carpet.position.set(centerX, -.008, centerZ);
+  carpet.receiveShadow = true;
+  roomGroup.add(carpet);
 }
 function buildPowerOutlets() {
   const plateMaterial = mat(0xd9dad5, .72);
@@ -1327,27 +1496,40 @@ function buildDoorLeaf(hingeX, z, rotation = 1.05) {
     (ENTRY.width - .1) / 2, (ENTRY.height - .12) / 2, .038);
   box(leaf, .035, .12, .035, mat(0xd4b04d, .3, { metalness: .55 }), ENTRY.width - .24, 1.02, .065);
   wallGroup.add(leaf);
+  const door = {
+    group: leaf,
+    hingeX,
+    hingeZ: z,
+    width: ENTRY.width - .1,
+    closedRotation: 0,
+    openRotation: rotation,
+    targetRotation: rotation
+  };
+  leaf.userData.walkInteraction = 'door';
+  leaf.userData.walkDoor = door;
+  walkDoors.push(door);
 }
 function buildWindows() {
   const glass = mat(0x9bc9c7, .14, {
-    transparent: true, opacity: .34, metalness: .1, side: THREE.DoubleSide
+    transparent: true, opacity: .34, metalness: .1, side: THREE.DoubleSide, depthWrite: false
   });
   const frame = mat(0x424e4d, .3, { metalness: .28 });
 
   // Four framed panes on the short end beside Bogdan, Ilya and Nikita's desks.
-  const glassStart = -2.5;
-  const glassSpan = 5;
+  const glassStart = -2.4;
+  const glassSpan = 4.8;
   const glassBay = glassSpan / 4;
   for (let index = 0; index < 4; index++) {
     const x = glassStart + glassBay * (index + .5);
-    box(windowGroup, glassBay - .04, 1.62, .045, glass, x, 1.65, HALF_L - .015);
+    box(windowGroup, glassBay - .04, 1.62, .025, glass, x, 1.65, HALF_L - .11);
   }
   for (let index = 0; index <= 4; index++) {
     const x = glassStart + glassBay * index;
-    box(windowGroup, .055, 1.72, .085, frame, x, 1.65, HALF_L - .015);
+    box(windowGroup, .055, 1.72, .055, frame, x, 1.65, HALF_L - .045);
   }
   for (const y of [.84, .92, 2.38, 2.46]) {
-    box(windowGroup, glassSpan, .055, .085, frame, 0, y, HALF_L - .015);
+    box(windowGroup, glassSpan, .055, .055, frame,
+      glassStart + glassSpan / 2, y, HALF_L - .07);
   }
 }
 function buildColumns() {
@@ -1369,7 +1551,10 @@ function buildArchitecturalDetails() {
   const seam = mat(0x797568, .92);
   for (const side of [-1, 1]) {
     const x = side * (HALF_W - .008);
-    box(wallGroup, .015, 2.02, ROOM.length - .18, concrete, x, 1.16, 0);
+    const wallRuns = [[-HALF_L + .09, HALF_L - .09]];
+    for (const [start, end] of wallRuns) {
+      box(wallGroup, .015, 2.02, end - start, concrete, x, 1.16, (start + end) / 2);
+    }
     box(wallGroup, .018, .64, ROOM.length - .18, charcoal, x, 2.48, 0);
     for (let index = 0; index < 7; index++) {
       const z = -HALF_L + .18 + index * 1.32;
@@ -1628,571 +1813,34 @@ function makeBlackHole(parent, x, shelfTop, z) {
     blackHoleDisk.add(segment);
   });
 }
-function makeChair(parent, side, seatId) {
-  const chair = new THREE.Group(); chair.position.set(side * .62, 0, 0);
-  chair.userData.walkInteraction = 'chair';
-  chair.userData.seatId = seatId;
-  chair.userData.side = side;
-  const upholstery = mat(0x7d888d), metal = mat(0x555956, .52);
-  // This chair sits beside the 600 × 1200 mm desk and faces inward along X.
-  box(chair, .48, .13, .48, upholstery, 0, .46, 0);
-  // The backrest is behind the sitter, away from the desktop; its width follows Z.
-  box(chair, .09, .47, .48, upholstery, side * .2, .69, 0);
-  box(chair, .47, .24, .07, upholstery, -side * .04, .53, -.25);
-  box(chair, .47, .24, .07, upholstery, -side * .04, .53, .25);
-  cylinder(chair, .045, .055, .36, metal, 0, .25, 0, 10);
-  cylinder(chair, .22, .22, .045, metal, 0, .07, 0, 5);
-  for (let index = 0; index < 5; index++) {
-    const angle = index * Math.PI * 2 / 5;
-    const spoke = box(chair, .25, .035, .035, metal, Math.cos(angle) * .1, .055, Math.sin(angle) * .1);
-    spoke.rotation.y = -angle;
-    cylinder(chair, .045, .045, .07, metal, Math.cos(angle) * .22, .035, Math.sin(angle) * .22, 8);
-  }
-  parent.add(chair);
-}
-function addNameLabel(parent, name) {
-  const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
-  const context = canvas.getContext('2d'); context.fillStyle = 'rgba(255,255,255,.94)';
-  context.roundRect(8, 8, 496, 112, 24); context.fill();
-  context.fillStyle = '#41423e'; context.font = '800 76px Arial'; context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.fillText(name || '·', 256, 64, 460);
-  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-  sprite.scale.set(.76, .19, 1); sprite.position.set(0, .84, 0); parent.add(sprite);
-}
-function makeWorkstation(seat) {
-  const root = new THREE.Group(); root.position.set(seat.x, 0, seat.z); root.rotation.y = seat.rot || 0;
-  root.userData.moveKey = seatKey(seat.id); root.visible = !importedModel; scene.add(root);
-  const desktop = mat(0xf3efe5, .4), legs = mat(0x555855, .54);
-  box(root, .6, .075, 1.2, desktop, 0, .77, 0);
-  for (const x of [-.26, .26]) for (const z of [-.55, .55]) box(root, .035, .74, .035, legs, x, .37, z);
-  box(root, .34, .045, .1, legs, 0, .53, -.43);
-  makeDeskEquipment(root, seat.side || 1);
-  makeChair(root, seat.side || 1, seat.id); addNameLabel(root, seat.name);
-  movable.set(seatKey(seat.id), { group: root, data: seat, kind: 'seat', width: 1.16, depth: 1.2, localX: (seat.side || 1) * .28, localZ: 0 });
-}
-function makeDeskEquipment(parent, side) {
-  const dark = mat(0x171b1e, .4, { metalness: .28 });
-  const trim = mat(0x434a4d, .34, { metalness: .42 });
-  const stand = mat(0x343a3c, .42, { metalness: .38 });
-  const rgbMaterials = [
-    mat(0x39dcff, .25, { emissive: 0x159dff, emissiveIntensity: 1.9, metalness: .18 }),
-    mat(0xd44bff, .25, { emissive: 0x932cff, emissiveIntensity: 1.8, metalness: .18 }),
-    mat(0xff4c9a, .25, { emissive: 0xc21f65, emissiveIntensity: 1.8, metalness: .18 }),
-    mat(0x64ffd5, .25, { emissive: 0x20c992, emissiveIntensity: 1.8, metalness: .18 })
-  ];
-
-  const monitorPositions = [
-    { z: -.3, angle: -side * .12 },
-    { z: .3, angle: side * .12 }
-  ];
-  for (const { z, angle } of monitorPositions) {
-    const x = -side * .18;
-    const monitor = new THREE.Group();
-    monitor.position.set(x, 0, z);
-    monitor.rotation.y = angle;
-    parent.add(monitor);
-    box(monitor, .026, .36, .6, dark, 0, 1.015, 0);
-    box(monitor, .19, .016, .14, stand, 0, .823, 0);
-    box(monitor, .025, .07, .025, stand, 0, .847, 0);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 320; canvas.height = 210;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#101a22'; context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#253746'; context.fillRect(0, 0, 320, 24);
-    context.fillStyle = '#93a9b3'; context.fillRect(12, 8, 40, 5);
-    context.fillStyle = '#d4aa3e'; context.fillRect(0, 24, 42, 186);
-    for (let row = 0; row < 10; row++) {
-      context.fillStyle = ['#78b9a2', '#d6ad65', '#87a6d2'][row % 3];
-      context.fillRect(58 + (row % 3) * 13, 42 + row * 14, 120 + (row % 4) * 24, 4);
-    }
-    context.fillStyle = '#8b9ca5'; context.fillRect(236, 54, 62, 104);
-    context.fillStyle = '#354b59'; context.fillRect(244, 63, 46, 48);
-    const screenTexture = new THREE.CanvasTexture(canvas);
-    screenTexture.colorSpace = THREE.SRGBColorSpace;
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(.59, .332), new THREE.MeshBasicMaterial({
-      map: screenTexture, side: THREE.DoubleSide, toneMapped: false
-    }));
-    screen.rotation.y = side * Math.PI / 2;
-    screen.position.set(side * .014, 1.015, 0);
-    monitor.add(screen);
-    box(monitor, .012, .014, .6, trim, side * .018, .832, 0);
-
-    // Four soft RGB strips outline the rear panel of each monitor.
-    const glowX = -side * .016;
-    const topGlow = rgbMaterials[(z < 0 ? 0 : 2)];
-    const sideGlow = rgbMaterials[(z < 0 ? 1 : 3)];
-    box(monitor, .006, .007, .58, topGlow, glowX, 1.199, 0);
-    box(monitor, .006, .007, .58, sideGlow, glowX, .831, 0);
-    box(monitor, .006, .35, .007, sideGlow, glowX, 1.015, -.295);
-    box(monitor, .006, .35, .007, topGlow, glowX, 1.015, .295);
-    box(monitor, .008, .018, .018, rgbMaterials[0], glowX, 1.015, 0);
-
-    const cableMaterial = mat(0x222729, .88);
-    addCable(parent, [
-      [x - side * .028, 1.015, z],
-      [x - side * .035, .87, z],
-      [-side * .12, .79, z],
-      [-side * .055, .57, .37]
-    ], cableMaterial, .0045);
-  }
-
-  // Compact mechanical keyboard with a legible layout and raised keycaps.
-  const keyboardCanvas = document.createElement('canvas');
-  keyboardCanvas.width = 600; keyboardCanvas.height = 220;
-  const keyboardContext = keyboardCanvas.getContext('2d');
-  keyboardContext.fillStyle = '#101416'; keyboardContext.fillRect(0, 0, 600, 220);
-  keyboardContext.strokeStyle = '#59646a'; keyboardContext.lineWidth = 5;
-  keyboardContext.strokeRect(3, 3, 594, 214);
-  const keyLabels = [
-    ['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '⌫'],
-    ['Tab', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\\'],
-    ['Caps', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", 'Enter'],
-    ['Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'Shift'],
-    ['Ctrl', 'Win', 'Alt', 'Space', '', '', '', '', '', '', 'Alt', 'Fn', '←', '→']
-  ];
-  keyLabels.forEach((row, rowIndex) => {
-    row.forEach((label, column) => {
-      if (!label || label === 'Space') return;
-      const x = 12 + column * 41;
-      const y = 12 + rowIndex * 39;
-      keyboardContext.fillStyle = ['Esc', 'Tab', 'Caps', 'Shift', 'Enter', 'Ctrl', 'Fn', 'Alt', '←', '↓', '↑', '→'].includes(label)
-        ? '#38464c' : '#263136';
-      keyboardContext.beginPath();
-      keyboardContext.roundRect(x, y, 34, 31, 5);
-      keyboardContext.fill();
-      keyboardContext.fillStyle = '#c9d5d8';
-      keyboardContext.font = `${label.length > 2 ? 12 : 15}px Segoe UI, Arial`;
-      keyboardContext.textAlign = 'center';
-      keyboardContext.textBaseline = 'middle';
-      keyboardContext.fillText(label, x + 17, y + 16, 31);
-    });
-  });
-  keyboardContext.fillStyle = '#38464c';
-  keyboardContext.beginPath();
-  keyboardContext.roundRect(135, 168, 206, 31, 5);
-  keyboardContext.fill();
-
-  const keyboardTexture = new THREE.CanvasTexture(keyboardCanvas);
-  keyboardTexture.colorSpace = THREE.SRGBColorSpace;
-  const keyboard = new THREE.Group();
-  keyboard.position.set(side * .055, .82, .005);
-  keyboard.rotation.y = side * Math.PI / 2;
-  parent.add(keyboard);
-  box(keyboard, .405, .014, .145, dark, 0, 0, 0);
-  const keyboardTop = new THREE.Mesh(new THREE.PlaneGeometry(.405, .145), new THREE.MeshBasicMaterial({
-    map: keyboardTexture, side: THREE.DoubleSide, toneMapped: false
-  }));
-  keyboardTop.rotation.x = -Math.PI / 2;
-  keyboardTop.position.y = .0075;
-  keyboard.add(keyboardTop);
-
-  const keyGeometry = new THREE.BoxGeometry(.018, .006, .014);
-  const keyMaterial = mat(0x66757a, .34, { metalness: .12 });
-  const accentKeyMaterial = mat(0xf0b92f, .3, { emissive: 0x5c3900, emissiveIntensity: .28 });
-  const regularKeys = [];
-  const accentKeys = [];
-  for (let row = 0; row < 5; row++) {
-    const count = 14;
-    for (let column = 0; column < count; column++) {
-      if (row === 4 && column >= 3 && column <= 9) continue;
-      const x = -.165 + column * .025;
-      const z = -.047 + row * .023;
-      const target = row === 4 && column === 13 || row === 0 && column === 0
-        ? accentKeys : regularKeys;
-      target.push(new THREE.Vector3(x, .015, z));
-    }
-  }
-  const addKeyInstances = (positions, material) => {
-    const keys = new THREE.InstancedMesh(keyGeometry, material, positions.length);
-    const transform = new THREE.Object3D();
-    positions.forEach((position, index) => {
-      transform.position.copy(position);
-      transform.updateMatrix();
-      keys.setMatrixAt(index, transform.matrix);
-    });
-    keys.instanceMatrix.needsUpdate = true;
-    keyboard.add(keys);
-  };
-  addKeyInstances(regularKeys, keyMaterial);
-  addKeyInstances(accentKeys, accentKeyMaterial);
-  box(keyboard, .13, .006, .016, mat(0x657278, .35), 0, .015, .047);
-
-  const keyboardFeet = mat(0x343a3c, .52, { metalness: .24 });
-  for (const x of [-.17, .17]) {
-    box(keyboard, .018, .012, .018, keyboardFeet, x, -.008, -.055);
-  }
-
-  const mousePad = mat(0x282f32, .96);
-  box(parent, .205, .012, .22, mousePad, side * .065, .816, .43);
-  const mouse = new THREE.Mesh(new THREE.SphereGeometry(.043, 18, 12), mat(0x202527, .34));
-  mouse.scale.set(.72, .28, 1.18);
-  mouse.rotation.y = side * .16;
-  mouse.position.set(side * .065, .838, .43);
-  parent.add(mouse);
-  box(parent, .004, .003, .05, mat(0xd6b145), side * .065, .85, .414);
-
-  // The headset sits on the left side of the desktop, aligned with the mouse.
-  const headsetX = -side * .15;
-  const headsetZ = .43;
-  box(parent, .15, .014, .12, dark, headsetX, .816, headsetZ);
-  box(parent, .018, .12, .018, stand, headsetX, .88, headsetZ);
-  const headband = new THREE.Mesh(new THREE.TorusGeometry(.07, .01, 8, 28, Math.PI), dark);
-  headband.rotation.y = Math.PI / 2;
-  headband.position.set(headsetX, .982, headsetZ);
-  parent.add(headband);
-  const earPadMaterial = mat(0x899396, .82);
-  for (const direction of [-1, 1]) {
-    const earCup = new THREE.Group();
-    earCup.position.set(headsetX, .95, headsetZ + direction * .067);
-    earCup.rotation.y = direction > 0 ? Math.PI : 0;
-    parent.add(earCup);
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(.03, 16, 14), dark);
-    ear.scale.set(.95, 1.25, .52);
-    earCup.add(ear);
-    box(parent, .055, .018, .018, stand, headsetX, .978, headsetZ + direction * .067);
-    const earPad = new THREE.Mesh(new THREE.SphereGeometry(.024, 14, 12), earPadMaterial);
-    earPad.scale.set(.9, 1.05, .38);
-    earPad.position.z = .018;
-    earCup.add(earPad);
-    const cushionRim = new THREE.Mesh(new THREE.TorusGeometry(.016, .003, 7, 20), trim);
-    cushionRim.scale.set(1, 1.22, 1);
-    cushionRim.position.z = .018;
-    earCup.add(cushionRim);
-  }
-
-  // The tower sits to the user's left, with its long edge parallel to the desk's short side.
-  const pcCase = new THREE.Group();
-  pcCase.position.set(-side * .05, 0, side * .39);
-  pcCase.rotation.y = -Math.PI / 2;
-  parent.add(pcCase);
-  box(pcCase, .22, .43, .43, mat(0x1b1f21, .38, { metalness: .3 }), 0, .285, 0);
-  box(pcCase, .008, .34, .35, mat(0x27343a, .26, { transparent: true, opacity: .68, metalness: .32 }),
-    side * .115, .29, 0);
-  box(pcCase, .014, .34, .012, trim, side * .122, .29, -.18);
-  const motherboard = mat(0x1b342b, .72, { metalness: .08 });
-  box(pcCase, .008, .3, .31, motherboard, -side * .065, .29, 0);
-
-  // Two RGB memory modules and a finned CPU cooler are visible through the side glass.
-  for (let index = 0; index < 2; index++) {
-    const memoryZ = -.09 + index * .052;
-    box(pcCase, .018, .125, .023, dark, side * .045, .34, memoryZ);
-    box(pcCase, .006, .012, .026, rgbMaterials[index], side * .057, .405, memoryZ);
-    box(pcCase, .006, .012, .026, rgbMaterials[(index + 1) % rgbMaterials.length],
-      side * .057, .275, memoryZ);
-  }
-  box(pcCase, .065, .17, .12, dark, side * .025, .3, .105);
-  for (let index = 0; index < 8; index++) {
-    box(pcCase, .085, .009, .126, trim, side * .045, .235 + index * .018, .105);
-  }
-  const cpuFan = new THREE.Mesh(new THREE.TorusGeometry(.043, .005, 7, 28), rgbMaterials[3]);
-  cpuFan.rotation.y = side * Math.PI / 2;
-  cpuFan.position.set(side * .071, .3, .105);
-  pcCase.add(cpuFan);
-  const cpuHub = new THREE.Mesh(new THREE.SphereGeometry(.012, 10, 8), rgbMaterials[0]);
-  cpuHub.position.copy(cpuFan.position);
-  pcCase.add(cpuHub);
-
-  // Triple intake fans are mounted on the outer short end, away from the glass panel.
-  for (let index = 0; index < 3; index++) {
-    const fan = new THREE.Mesh(new THREE.TorusGeometry(.047, .006, 8, 32), rgbMaterials[index]);
-    fan.position.set(0, .18 + index * .105, .218);
-    pcCase.add(fan);
-    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(.032, .0035, 6, 28), rgbMaterials[(index + 1) % rgbMaterials.length]);
-    innerRing.position.copy(fan.position);
-    pcCase.add(innerRing);
-    const hub = new THREE.Mesh(new THREE.SphereGeometry(.014, 12, 10), rgbMaterials[(index + 2) % rgbMaterials.length]);
-    hub.position.copy(fan.position);
-    pcCase.add(hub);
-    for (let blade = 0; blade < 5; blade++) {
-      const angle = blade * Math.PI * 2 / 5;
-      const fin = box(pcCase, .008, .025, .006, rgbMaterials[(index + 3) % rgbMaterials.length],
-        Math.cos(angle) * .021, fan.position.y + Math.sin(angle) * .021, .22);
-      fin.rotation.z = angle;
-    }
-  }
-
-  // The monitor, keyboard and mouse leads meet a cable tray beneath the desktop.
-  const cableMaterial = mat(0x202426, .9);
-  const cableHub = [-side * .055, .56, .36];
-  addCable(parent, [[side * .055, .827, .07], [side * .08, .79, .19], cableHub], cableMaterial, .004);
-  addCable(parent, [[side * .065, .84, .43], [side * .03, .78, .43], cableHub], cableMaterial, .004);
-  addCable(parent, [cableHub, [-side * .05, .35, .4], [-side * .05, .13, side * .39]], cableMaterial, .007);
-
-  // A grounded floor cord runs from the case to the nearest wall socket.
-  const wallSide = parent.position.x < 0 ? -1 : 1;
-  const socketX = wallSide * (HALF_W - .035) - parent.position.x;
-  const floorCable = mat(0x292b2c, .92);
-  addCable(parent, [
-    [-side * .05, .025, side * .39],
-    [-side * .05, .015, side * .52],
-    [socketX * .45, .015, side * .57],
-    [socketX, .015, .4],
-    [socketX, .015, .05],
-    [socketX, .19, 0]
-  ], floorCable, .009);
-}
-function disposeObject(object) {
-  object.traverse(child => {
-    if (child.geometry) child.geometry.dispose();
-    if (!child.material) return;
-    const materials = Array.isArray(child.material) ? child.material : [child.material];
-    materials.forEach(material => {
-      if (material.map) material.map.dispose();
-      material.dispose();
-    });
-  });
-}
+function makeWorkstation(seat) { return furnitureFactory.makeWorkstation(seat); }
 function makeBoard() {
-  const board = new THREE.Group();
-  board.position.set(state.board.x, 0, state.board.z);
-  board.rotation.y = state.board.rot || 0;
-  board.userData.moveKey = 'board';
-  const frame = mat(0x535b59, .34, { metalness: .32 });
-  const trim = mat(0x858e8d, .38, { metalness: .46 });
-  const foot = mat(0x3e4545, .48, { metalness: .38 });
-  box(board, 1.2, .86, .065, frame, 0, 1.37, 0);
-  boardSurface = box(board, 1.11, .77, .018, mat(0xf8f5ec, .25), 0, 1.37, .042);
-  boardSurface.userData.drawSurface = true;
-  box(board, 1.13, .025, .055, trim, 0, 1.775, .012);
-  box(board, 1.13, .025, .055, trim, 0, .965, .012);
-  box(board, .025, .82, .055, trim, -.565, 1.37, .012);
-  box(board, .025, .82, .055, trim, .565, 1.37, .012);
-  box(board, .07, 1.23, .07, frame, -.43, .62, 0);
-  box(board, .07, 1.23, .07, frame, .43, .62, 0);
-  box(board, .9, .07, .42, frame, 0, .055, 0);
-  box(board, .55, .045, .07, trim, 0, .48, 0);
-
-  // A front-facing marker tray with a raised rail and four colored dry-erase markers.
-  boardMarkerTray = new THREE.Group();
-  boardMarkerTray.name = 'Marker tray';
-  box(boardMarkerTray, .96, .035, .16, frame, 0, .935, .105);
-  box(boardMarkerTray, .96, .022, .018, trim, 0, .961, .181);
-  for (let index = 0; index < 4; index++) {
-    box(boardMarkerTray, .014, .01, .08, trim, -.36 + index * .24, .958, .1);
-  }
-  board.add(boardMarkerTray);
-
-  const markerColors = [0x263033, 0xd9473f, 0x3678d2, 0x2e9a68];
-  for (let index = 0; index < markerColors.length; index++) {
-    const color = markerColors[index];
-    const marker = new THREE.Group();
-    marker.userData.walkInteraction = 'marker';
-    marker.userData.markerColor = color;
-    marker.userData.markerId = index;
-    marker.position.set(-.33 + index * .22, .976, .105);
-    const barrel = cylinder(marker, .012, .012, .145, mat(color, .34), 0, 0, 0, 14);
-    barrel.rotation.z = Math.PI / 2;
-    for (const end of [-1, 1]) {
-      const cap = cylinder(marker, .013, .013, .025, mat(end < 0 ? 0x303638 : color, .34), end * .078, 0, 0, 14);
-      cap.rotation.z = Math.PI / 2;
-    }
-    box(marker, .028, .018, .004, mat(0xf0e8d8, .62), 0, .012, .014);
-    marker.userData.homePosition = marker.position.clone();
-    boardMarkerTray.add(marker);
-  }
-
-  const eraser = new THREE.Group();
-  eraser.name = 'Board eraser';
-  eraser.userData.walkInteraction = 'eraser';
-  box(eraser, .105, .055, .07, mat(0xe5e1d7, .5), 0, .028, 0);
-  box(eraser, .105, .012, .07, mat(0x4c77ad, .42), 0, -.005, 0);
-  eraser.position.set(.44, .978, .105);
-  eraser.userData.homePosition = eraser.position.clone();
-  boardMarkerTray.add(eraser);
-
-  boardDrawings = new THREE.Group();
-  boardDrawings.name = 'Board drawings';
-  board.add(boardDrawings);
-  (state.boardMarks || []).forEach(mark => createBoardStrokeMesh(boardDrawings, mark.points, mark.color));
-
-  for (const x of [-.43, .43]) {
-    for (const y of [.1, 1.37, 1.76]) {
-      const fastener = new THREE.Mesh(new THREE.SphereGeometry(.018, 10, 8), trim);
-      fastener.position.set(x, y, .047);
-      board.add(fastener);
-    }
-    cylinder(board, .04, .04, .08, foot, x, .1, 0, 12);
-  }
-
-  boardRoot = board;
-  board.visible = !importedModel;
-  scene.add(board);
-  movable.set('board', { group: board, data: state.board, kind: 'board', width: 1.2, depth: .2, localX: 0, localZ: 0 });
+  const board = furnitureFactory.makeBoard();
+  boardRoot = furnitureFactory.getBoardRoot();
+  boardSurface = furnitureFactory.getBoardSurface();
+  boardMarkerTray = furnitureFactory.getBoardMarkerTray();
+  boardDrawings = furnitureFactory.getBoardDrawings();
+  return board;
 }
 function createBoardStrokeMesh(parent, points, color) {
-  if (!points || points.length < 2) return null;
-  const path = points.map(([x, y]) => new THREE.Vector3(x, y, .054));
-  const curve = new THREE.CatmullRomCurve3(path);
-  const geometry = new THREE.TubeGeometry(curve, Math.max(8, points.length * 3), .006, 5, false);
-  const material = new THREE.MeshBasicMaterial({ color, depthTest: false, toneMapped: false });
-  const stroke = new THREE.Mesh(geometry, material);
-  stroke.renderOrder = 5;
-  parent.add(stroke);
-  return stroke;
+  return furnitureFactory.createBoardStrokeMesh(parent, points, color);
 }
-function makeCabinet() {
-  const cabinet = new THREE.Group();
-  cabinet.position.set(state.cabinet.x, 0, state.cabinet.z);
-  cabinet.rotation.y = state.cabinet.rot;
-  cabinet.userData.moveKey = 'cabinet';
-  const body = mat(0x555653, .62);
-  const doors = mat(0x77766f, .58);
-  const trim = mat(0x96948d, .46, { metalness: .2 });
-  const vent = mat(0x353a3b, .82);
-  box(cabinet, .72, 1.72, .64, body, 0, .89, 0);
-  box(cabinet, .76, .09, .68, mat(0x353a3b, .62), 0, .075, 0);
-  box(cabinet, .76, .06, .68, trim, 0, 1.77, 0);
-
-  // Two full-height wardrobe doors with recessed panels and central handles.
-  for (const side of [-1, 1]) {
-    const centerX = side * .18;
-    box(cabinet, .351, 1.55, .022, doors, centerX, .91, .331);
-    box(cabinet, .009, 1.43, .009, trim, centerX - side * .156, .91, .346);
-    box(cabinet, .009, 1.43, .009, trim, centerX + side * .156, .91, .346);
-    box(cabinet, .32, .009, .009, trim, centerX, .194, .346);
-    box(cabinet, .32, .009, .009, trim, centerX, 1.626, .346);
-
-    cylinder(cabinet, .012, .012, .24, trim, side * .035, .91, .365, 12);
-    cylinder(cabinet, .018, .018, .018, mat(0xb7b9b2, .36, { metalness: .42 }),
-      side * .035, .91, .365, 12);
-    box(cabinet, .032, .038, .008, vent, centerX + side * .115, 1.565, .347);
-    box(cabinet, .012, .018, .01, mat(0xc7b46d, .4, { metalness: .25 }),
-      centerX + side * .035, .91, .354);
-  }
-
-  // Small ventilation slots above the doors and four adjustable feet below the plinth.
-  for (let index = 0; index < 8; index++) {
-    box(cabinet, .035, .008, .008, vent, -.14 + index * .04, 1.69, .328);
-  }
-  const feet = mat(0x25292a, .5, { metalness: .28 });
-  for (const x of [-.29, .29]) for (const z of [-.25, .25]) {
-    cylinder(cabinet, .025, .025, .045, feet, x, .0225, z, 10);
-  }
-
-  furnitureGroup.add(cabinet);
-  movable.set('cabinet', { group: cabinet, data: state.cabinet, kind: 'cabinet', width: .76, depth: .68, localX: 0, localZ: 0 });
-}
-function makeCart() {
-  const cart = new THREE.Group();
-  cart.name = t('cart');
-  cart.position.set(state.cart.x, 0, state.cart.z);
-  cart.rotation.y = state.cart.rot || 0;
-  cart.userData.moveKey = 'cart';
-  cart.visible = !importedModel;
-
-  const frame = mat(0xb5d62b, .42, { metalness: .22 });
-  const darkFrame = mat(0x252a2c, .54, { metalness: .36 });
-  const deck = mat(0x202426, .5, { metalness: .32 });
-  const redEdge = mat(0xc74d3d, .36, { metalness: .22 });
-  const glass = mat(0x28363b, .22, { transparent: true, opacity: .52, metalness: .24 });
-
-  box(cart, .72, .075, .92, deck, 0, .29, 0);
-  box(cart, .72, .018, .035, redEdge, 0, .33, .455);
-  box(cart, .72, .018, .035, redEdge, 0, .33, -.455);
-  box(cart, .025, .025, .82, redEdge, -.35, .33, 0);
-  box(cart, .025, .025, .82, redEdge, .35, .33, 0);
-
-  for (const x of [-.28, .28]) for (const z of [-.34, .34]) {
-    box(cart, .045, .055, .045, darkFrame, x, .22, z);
-    const wheel = cylinder(cart, .069, .069, .052, darkFrame, x, .105, z, 20);
-    wheel.rotation.z = Math.PI / 2;
-    const hub = cylinder(cart, .028, .028, .056, mat(0x858a88, .38, { metalness: .62 }), x, .105, z, 16);
-    hub.rotation.z = Math.PI / 2;
-  }
-
-  // Continuous tubular U-handle from the axle deck to the padded grip.
-  const handlePath = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-.29, .31, -.36), new THREE.Vector3(-.29, .75, -.36),
-    new THREE.Vector3(-.29, 1.12, -.36), new THREE.Vector3(-.24, 1.2, -.36),
-    new THREE.Vector3(0, 1.22, -.36), new THREE.Vector3(.24, 1.2, -.36),
-    new THREE.Vector3(.29, 1.12, -.36), new THREE.Vector3(.29, .75, -.36),
-    new THREE.Vector3(.29, .31, -.36)
-  ]);
-  const handle = new THREE.Mesh(new THREE.TubeGeometry(handlePath, 40, .022, 10, false), frame);
-  handle.castShadow = true; cart.add(handle);
-
-  // Compact tower secured to the platform; its glass side and fans face outward.
-  box(cart, .43, .66, .62, darkFrame, 0, .7, .025);
-  box(cart, .008, .54, .48, glass, .22, .7, .025);
-  box(cart, .01, .54, .012, frame, .228, .7, -.22);
-  for (let index = 0; index < 3; index++) {
-    const fan = new THREE.Mesh(new THREE.TorusGeometry(.083, .008, 8, 28), mat(0x54b69a, .3, {
-      emissive: 0x16745c, emissiveIntensity: .86, metalness: .24
-    }));
-    fan.rotation.y = Math.PI / 2;
-    fan.position.set(.231, .53 + index * .16, .02);
-    cart.add(fan);
-    const fanHub = new THREE.Mesh(new THREE.SphereGeometry(.022, 12, 10), mat(0xb1ead8, .28, {
-      emissive: 0x46ad8b, emissiveIntensity: .8
-    }));
-    fanHub.position.copy(fan.position);
-    cart.add(fanHub);
-  }
-  // Rack servers face the aisle, with individual drive bays, vents, handles and status LEDs.
-  const rackRail = mat(0x697176, .38, { metalness: .52 });
-  const vent = mat(0x111719, .82);
-  const drive = mat(0x32393c, .46, { metalness: .32 });
-  for (const x of [-.19, .19]) {
-    box(cart, .018, .58, .022, rackRail, x, .7, .347);
-    for (let index = 0; index < 4; index++) {
-      box(cart, .012, .024, .01, mat(0x969c9e, .42, { metalness: .4 }),
-        x, .45 + index * .16, .362);
-    }
-  }
-  const driveLight = mat(0x70d49f, .24, { emissive: 0x287c54, emissiveIntensity: 1.15 });
-  const driveActivity = mat(0xf1bd43, .24, { emissive: 0xa16b16, emissiveIntensity: .85 });
-  for (let index = 0; index < 4; index++) {
-    const y = .455 + index * .15;
-    box(cart, .36, .12, .028, drive, 0, y, .34);
-    box(cart, .018, .075, .008, rackRail, -.17, y, .359);
-    box(cart, .018, .075, .008, rackRail, .17, y, .359);
-    box(cart, .095, .065, .009, vent, -.085, y, .36);
-    for (let slit = 0; slit < 5; slit++) {
-      box(cart, .004, .052, .004, rackRail, -.12 + slit * .017, y, .366);
-    }
-    box(cart, .09, .048, .012, mat(0x202628, .44), .07, y, .361);
-    box(cart, .045, .025, .008, rackRail, .07, y, .37);
-    for (let led = 0; led < 2; led++) {
-      box(cart, .012, .012, .006, led ? driveActivity : driveLight,
-        .139 + led * .021, y, .37);
-    }
-  }
-  box(cart, .42, .018, .025, rackRail, 0, 1.035, .34);
-  box(cart, .42, .018, .025, rackRail, 0, .365, .34);
-  const statusLight = mat(0x8cd2ab, .25, { emissive: 0x33865d, emissiveIntensity: 1.1 });
-  box(cart, .012, .018, .012, statusLight, .224, .98, .25);
-
-  // A loose headset and a short cable coil sit on the tower's top panel.
-  const cable = new THREE.Mesh(new THREE.TorusGeometry(.075, .006, 6, 36, Math.PI * 1.7), mat(0x87c94a, .4));
-  cable.rotation.x = -Math.PI / 2;
-  cable.position.set(-.075, 1.04, .04);
-  cart.add(cable);
-  const headsetBand = new THREE.Mesh(new THREE.TorusGeometry(.075, .012, 8, 28, Math.PI), darkFrame);
-  headsetBand.rotation.y = Math.PI / 2;
-  headsetBand.position.set(.055, 1.055, .08);
-  cart.add(headsetBand);
-  for (const direction of [-1, 1]) {
-    const cup = new THREE.Mesh(new THREE.SphereGeometry(.031, 14, 12), darkFrame);
-    cup.scale.set(.52, 1.15, 1);
-    cup.position.set(.055, 1.005, .08 + direction * .071);
-    cart.add(cup);
-  }
-
-  // The cart and server assembly reaches approximately 1.8 m, matching the real unit.
-  cart.scale.y = 1.475;
-  scene.add(cart);
-  movable.set('cart', { group: cart, data: state.cart, kind: 'cart', width: .72, depth: .92, localX: 0, localZ: 0 });
-}
+function makeCabinet() { return furnitureFactory.makeCabinet(); }
+function makeCart() { return furnitureFactory.makeCart(); }
 function rebuildMovables() {
   clearObjectHighlight();
-  for (const item of movable.values()) {
+  for (const [key, item] of movable) {
+    if (item.kind === 'kitchen') {
+      item.data = state.kitchenObjects[item.id] || item.data;
+      state.kitchenObjects[item.id] = item.data;
+      item.group.position.set(item.data.x, 0, item.data.z - KITCHEN_Z_OFFSET);
+      item.group.rotation.y = item.data.rot || 0;
+      continue;
+    }
     item.group.parent?.remove(item.group);
     disposeObject(item.group);
+    movable.delete(key);
   }
-  movable.clear();
   makeBoard();
   makeCabinet();
   makeCart();
@@ -2209,14 +1857,58 @@ function makeDimensionLabel(text) {
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
   sprite.scale.set(.76, .19, 1); return sprite;
 }
+function getFootprint(item) {
+  if (item.footprint) return item.footprint;
+
+  item.group.updateMatrixWorld(true);
+  const inverseRoot = item.group.matrixWorld.clone().invert();
+  const relativeBounds = new THREE.Box3();
+  const relativeMatrix = new THREE.Matrix4();
+  const point = new THREE.Vector3();
+
+  item.group.traverse(object => {
+    if (!object.isMesh || object.userData.excludeFromFootprint || !object.geometry) return;
+    if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+    if (!object.geometry.boundingBox) return;
+
+    relativeMatrix.multiplyMatrices(inverseRoot, object.matrixWorld);
+    const { min, max } = object.geometry.boundingBox;
+    for (const x of [min.x, max.x]) {
+      for (const y of [min.y, max.y]) {
+        for (const z of [min.z, max.z]) {
+          relativeBounds.expandByPoint(point.set(x, y, z).applyMatrix4(relativeMatrix));
+        }
+      }
+    }
+  });
+
+  if (relativeBounds.isEmpty()) {
+    item.footprint = {
+      width: item.width,
+      depth: item.depth,
+      localX: item.localX || 0,
+      localZ: item.localZ || 0
+    };
+    return item.footprint;
+  }
+
+  item.footprint = {
+    width: relativeBounds.max.x - relativeBounds.min.x,
+    depth: relativeBounds.max.z - relativeBounds.min.z,
+    localX: (relativeBounds.min.x + relativeBounds.max.x) / 2,
+    localZ: (relativeBounds.min.z + relativeBounds.max.z) / 2
+  };
+  return item.footprint;
+}
 function updateDimensions() {
   if (dimensionGroup?.parent) dimensionGroup.parent.remove(dimensionGroup);
   if (dimensionGroup) disposeObject(dimensionGroup);
   dimensionGroup = new THREE.Group();
   if (!state.showDimensions || !selectedKey || !movable.has(selectedKey)) return;
-  const item = movable.get(selectedKey), width = item.width, depth = item.depth;
-  const left = item.localX - width / 2, right = item.localX + width / 2;
-  const near = item.localZ + depth / 2, far = item.localZ - depth / 2, offset = .26;
+  const item = movable.get(selectedKey), footprint = getFootprint(item);
+  const { width, depth, localX, localZ } = footprint;
+  const left = localX - width / 2, right = localX + width / 2;
+  const near = localZ + depth / 2, far = localZ - depth / 2, offset = .26;
   const y = .045, color = 0xb58b18;
   addLine(dimensionGroup, [new THREE.Vector3(left, y, near), new THREE.Vector3(right, y, near)], color);
   addLine(dimensionGroup, [new THREE.Vector3(left, y, near), new THREE.Vector3(left, y, near + offset)], color);
@@ -2225,17 +1917,18 @@ function updateDimensions() {
   addLine(dimensionGroup, [new THREE.Vector3(right, y, far), new THREE.Vector3(right + offset, y, far)], color);
   addLine(dimensionGroup, [new THREE.Vector3(right, y, near), new THREE.Vector3(right + offset, y, near)], color);
   const wLabel = makeDimensionLabel(`${width.toFixed(2)} ${t('m')}`);
-  wLabel.position.set(item.localX, .11, near + offset + .08); dimensionGroup.add(wLabel);
+  wLabel.position.set(localX, .11, near + offset + .08); dimensionGroup.add(wLabel);
   const dLabel = makeDimensionLabel(`${depth.toFixed(2)} ${t('m')}`);
-  dLabel.position.set(right + offset + .11, .11, item.localZ); dimensionGroup.add(dLabel);
+  dLabel.position.set(right + offset + .11, .11, localZ); dimensionGroup.add(dLabel);
   movable.get(selectedKey).group.add(dimensionGroup);
 }
 function rectFor(item) {
+  const footprint = getFootprint(item);
   const rotation = item.data.rot || 0, cos = Math.cos(rotation), sin = Math.sin(rotation);
   return {
-    x: item.data.x + cos * item.localX + sin * item.localZ,
-    z: item.data.z - sin * item.localX + cos * item.localZ,
-    width: item.width, depth: item.depth, rotation
+    x: item.data.x + cos * footprint.localX + sin * footprint.localZ,
+    z: item.data.z - sin * footprint.localX + cos * footprint.localZ,
+    width: footprint.width, depth: footprint.depth, rotation
   };
 }
 function corners(rect) {
@@ -2254,8 +1947,17 @@ function overlaps(a, b) {
   }
   return true;
 }
-function outOfBounds(rect) {
+function outOfBounds(rect, item) {
+  if (item.kind === 'kitchen') {
+    return corners(rect).some(point =>
+      point.x < KITCHEN_WORLD_LEFT - .025 || point.x > KITCHEN_RIGHT + .025
+        || point.z < -HALF_L - .025 || point.z > KITCHEN_WORLD_TOP + .025
+    );
+  }
   return corners(rect).some(point => Math.abs(point.x) > HALF_W + .025 || Math.abs(point.z) > HALF_L + .025);
+}
+function collisionKey(item) {
+  return item.kind === 'seat' ? seatKey(item.data.id) : item.key || item.kind;
 }
 function drawFootprint(parent, rect, color, opacity = .09) {
   const pts = corners(rect).map(point => new THREE.Vector3(point.x, .03, point.z));
@@ -2275,24 +1977,24 @@ function updateCollisions() {
   const items = [...movable.values()].map(item => ({ item, rect: rectFor(item) }));
   const conflicted = new Set();
   items.forEach(({ item, rect }) => {
-    if (outOfBounds(rect)) conflicted.add(item.kind === 'seat' ? seatKey(item.data.id) : item.kind);
+    if (outOfBounds(rect, item)) conflicted.add(collisionKey(item));
   });
   for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
     if (!overlaps(items[i].rect, items[j].rect)) continue;
-    conflicted.add(items[i].item.kind === 'seat' ? seatKey(items[i].item.data.id) : items[i].item.kind);
-    conflicted.add(items[j].item.kind === 'seat' ? seatKey(items[j].item.data.id) : items[j].item.kind);
+    conflicted.add(collisionKey(items[i].item));
+    conflicted.add(collisionKey(items[j].item));
   }
   const conflictedObstacles = new Set();
   obstacles.forEach((obstacle, obstacleIndex) => {
     const obstacleRect = { ...obstacle, rotation: obstacle.rot || 0 };
     items.forEach(({ item, rect }) => {
       if (!overlaps(rect, obstacleRect)) return;
-      conflicted.add(item.kind === 'seat' ? seatKey(item.data.id) : item.kind);
+      conflicted.add(collisionKey(item));
       conflictedObstacles.add(obstacleIndex);
     });
   });
   items.forEach(({ item, rect }) => {
-    const key = item.kind === 'seat' ? seatKey(item.data.id) : item.kind;
+    const key = collisionKey(item);
     const color = conflicted.has(key) ? 0xd84d3d : 0xe0ac24;
     drawFootprint(collisionGroup, rect, color, conflicted.has(key) ? .16 : .07);
   });
@@ -2314,7 +2016,7 @@ function setView(view) {
   if (walkingMode) exitWalkMode();
   controls.enabled = true;
   cancelAnimationFrame(cameraMoveFrame);
-  const target = new THREE.Vector3(0, .2, 0);
+  const target = new THREE.Vector3(SITE_CENTER_X, .2, SITE_CENTER_Z);
   const offset = camera.position.clone().sub(controls.target);
   const distance = offset.length();
   const directions = {
@@ -2377,6 +2079,11 @@ function floorPoint(event) {
 function pointerDown(event) {
   if (walkingMode) {
     event.preventDefault();
+    if (event.pointerType === 'touch') {
+      walkTouchLook = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      renderer.domElement.setPointerCapture(event.pointerId);
+      return;
+    }
     if (event.button === 0) {
       setWalkPointer(event);
       beginBoardStroke();
@@ -2409,6 +2116,11 @@ function pointerDown(event) {
 }
 function pointerMove(event) {
   if (walkingMode) {
+    if (event.pointerType === 'touch') {
+      updateWalkTouchLook(event);
+      if (mobileDrawHeld) updateBoardStroke();
+      return;
+    }
     setWalkPointer(event);
     updateBoardStroke();
     return;
@@ -2419,16 +2131,39 @@ function pointerMove(event) {
   }
   const point = floorPoint(event), item = movable.get(dragging.key);
   if (!item) return;
-  const limitX = HALF_W - (item.kind === 'seat' ? .7 : item.kind === 'cabinet' ? .38 : item.kind === 'cart' ? .42 : .6);
-  const limitZ = HALF_L - (item.kind === 'seat' ? .6 : item.kind === 'cabinet' ? .34 : item.kind === 'cart' ? .52 : .1);
-  item.data.x = THREE.MathUtils.clamp(point.x + dragging.dx, -limitX, limitX);
-  item.data.z = THREE.MathUtils.clamp(point.z + dragging.dz, -limitZ, limitZ);
-  item.group.position.set(item.data.x, 0, item.data.z);
+  if (item.kind === 'kitchen') {
+    const rotation = item.data.rot || 0;
+    const cosine = Math.abs(Math.cos(rotation));
+    const sine = Math.abs(Math.sin(rotation));
+    const halfX = (cosine * item.width + sine * item.depth) / 2;
+    const halfZ = (sine * item.width + cosine * item.depth) / 2;
+    item.data.x = THREE.MathUtils.clamp(
+      point.x + dragging.dx,
+      KITCHEN_WORLD_LEFT + halfX,
+      KITCHEN_RIGHT - halfX
+    );
+    item.data.z = THREE.MathUtils.clamp(
+      point.z + dragging.dz,
+      -HALF_L + halfZ,
+      KITCHEN_WORLD_TOP - halfZ
+    );
+    item.group.position.set(item.data.x, 0, item.data.z - KITCHEN_Z_OFFSET);
+  } else {
+    const limitX = HALF_W - (item.kind === 'seat' ? .7 : item.kind === 'cabinet' ? .38 : item.kind === 'cart' ? .42 : .6);
+    const limitZ = HALF_L - (item.kind === 'seat' ? .6 : item.kind === 'cabinet' ? .34 : item.kind === 'cart' ? .52 : .1);
+    item.data.x = THREE.MathUtils.clamp(point.x + dragging.dx, -limitX, limitX);
+    item.data.z = THREE.MathUtils.clamp(point.z + dragging.dz, -limitZ, limitZ);
+    item.group.position.set(item.data.x, 0, item.data.z);
+  }
   dragging.moved = true;
   updateDimensions(); updateCollisions(); updateMiniPlan();
 }
-function pointerUp() {
+function pointerUp(event) {
   if (walkingMode) {
+    if (event?.pointerType === 'touch') {
+      if (walkTouchLook?.pointerId === event.pointerId) walkTouchLook = null;
+      return;
+    }
     finishBoardStroke();
     return;
   }
@@ -2463,8 +2198,9 @@ function setHoveredObject(key) {
   clearObjectHighlight();
   hoveredKey = effectiveKey;
   const item = effectiveKey ? movable.get(effectiveKey) : null;
-  if (!item) return;
-  item.group.traverse(mesh => {
+  const target = item?.group || (effectiveKey === 'kitchen' ? kitchenGroup : null);
+  if (!target) return;
+  target.traverse(mesh => {
     if (!mesh.isMesh || !mesh.material) return;
     const original = mesh.material;
     const highlighted = (Array.isArray(original) ? original : [original]).map(material => {

@@ -1,0 +1,140 @@
+.modal-backdrop {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #17171377;
+  backdrop-filter: blur(4px);
+}
+.settings-dialog {
+  width: min(600px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 25px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+.dialog-head small {
+  color: var(--yellow-deep);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.dialog-head h2 {
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+.close-button {
+  width: 35px;
+  height: 35px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 23px;
+}
+.setting-block {
+  margin: 19px 0;
+}
+.setting-block > label {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+.hotkey-block {
+  width: 100%;
+  margin-top: 25px;
+}
+.hotkey-list {
+  width: 100%;
+  padding: 4px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+.hotkey-list p {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 165px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+.hotkey-list p:last-child { border-bottom: 0; }
+.hotkey-list kbd {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+.segmented button {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+}
+.segmented button.active {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 4px #00000010;
+}
+.swatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+}
+.light-swatch {
+  background: linear-gradient(135deg, #fff 0 50%, #d7d7d1 50%);
+}
+.dark-swatch {
+  background: linear-gradient(135deg, #1e1e1e 0 50%, #555 50%);
+}
+.dialog-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 25px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+  color: var(--subtle);
+  font-size: 14px;
+}

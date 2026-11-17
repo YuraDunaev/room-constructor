@@ -1,0 +1,69 @@
+:root {
+  font-family: "Segoe UI", "DM Sans", Arial, sans-serif;
+  font-size: 16px;
+  color-scheme: light;
+  --page: #f3f3f1;
+  --surface: #ffffff;
+  --surface-soft: #f7f7f5;
+  --surface-strong: #ebebe8;
+  --ink: #252521;
+  --muted: #73736c;
+  --subtle: #999990;
+  --line: #e4e4df;
+  --line-strong: #d5d4cc;
+  --yellow: #efbd27;
+  --yellow-deep: #c5930b;
+  --yellow-soft: #fff4ca;
+  --yellow-ink: #3c2c00;
+  --danger: #c75043;
+  --scene: #e9eaeb;
+  --tree-selected: #fff0b5;
+  --shadow: 0 10px 36px #27251e1a;
+}
+body[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #20201f;
+  --surface: #282827;
+  --surface-soft: #30302e;
+  --surface-strong: #3a3a37;
+  --ink: #f2f0e9;
+  --muted: #c1beb4;
+  --subtle: #96948b;
+  --line: #41413d;
+  --line-strong: #55554f;
+  --yellow: #f2c12f;
+  --yellow-deep: #e0ae16;
+  --yellow-soft: #4a3c16;
+  --yellow-ink: #fff1bf;
+  --danger: #ef8779;
+  --scene: #343432;
+  --tree-selected: #51431a;
+  --shadow: 0 14px 42px #0008;
+}
+* {
+  box-sizing: border-box;
+}
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+body {
+  min-width: 1000px;
+  min-height: 620px;
+  overflow: hidden;
+  background: var(--page);
+  color: var(--ink);
+}
+button, input {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+#app {
+  display: flex;
+  flex-direction: column;
+  background: var(--page);
+}

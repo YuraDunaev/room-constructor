@@ -1,0 +1,285 @@
+.properties {
+  padding: 19px 16px 14px;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+}
+.properties-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--line);
+}
+.properties-heading small {
+  color: var(--subtle);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .07em;
+}
+.properties-heading h2 {
+  max-width: 205px;
+  overflow: hidden;
+  margin: 5px 0 0;
+  color: var(--ink);
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.properties-heading > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--yellow-soft);
+  color: var(--yellow-deep);
+  font-size: 21px;
+}
+.selected-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+.object-avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  border-radius: 9px;
+  background: var(--yellow-soft);
+  color: var(--yellow-deep);
+  font-size: 20px;
+}
+.board-avatar {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+.selected-card div {
+  min-width: 0;
+}
+.selected-card b {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.selected-card small {
+  display: block;
+  margin-top: 4px;
+  color: var(--subtle);
+  font-size: 14px;
+}
+.field-label, .coordinates label {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+.text-input, .coordinates input {
+  width: 100%;
+  height: 39px;
+  margin-top: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+}
+.text-input:focus, .coordinates input:focus, .rotate-group input:focus {
+  border-color: var(--yellow-deep);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 22%, transparent);
+}
+.section-label {
+  margin: 20px 0 10px;
+  color: var(--subtle);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .05em;
+}
+.coordinates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.coordinates input {
+  font-variant-numeric: tabular-nums;
+}
+.danger-button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 16px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+  color: var(--danger);
+  font-size: 14px;
+}
+.danger-button:hover {
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+}
+.property-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.property-row b {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+}
+.panel-divider {
+  height: 1px;
+  margin: 18px 0;
+  background: var(--line);
+}
+.empty-selection {
+  min-height: 145px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--subtle);
+  text-align: center;
+}
+.empty-selection b {
+  color: var(--yellow-deep);
+  font-size: 28px;
+}
+.empty-selection span {
+  max-width: 200px;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.static-note {
+  display: grid;
+  min-height: 130px;
+  place-content: center;
+  color: var(--subtle);
+  text-align: center;
+  font-size: 22px;
+}
+.static-note p {
+  max-width: 205px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.mini-plan-card {
+  margin-top: 22px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+.mini-plan-card > b {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.mini-plan-card > b span {
+  color: var(--yellow-deep);
+}
+.mini-plan {
+  width: 100%;
+  aspect-ratio: 5.76 / 8.395;
+  max-height: 350px;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid #858780;
+  border-radius: 3px;
+  background: #d8d4ca;
+  box-shadow: inset 0 0 0 7px #efede7;
+}
+.mini-plan-frame {
+  display: flex;
+  justify-content: center;
+  padding: 0 9px;
+}
+body[data-theme="dark"] .mini-plan {
+  background: #57554e;
+  box-shadow: inset 0 0 0 7px #77746a;
+}
+.mini-plan::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: auto;
+  bottom: 0;
+  height: 3px;
+  background: #83b8b3;
+}
+.mini-plan > b,
+.mini-plan > i {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+}
+.mini-plan > i.mini-desk {
+  width: var(--w, 10.42%);
+  height: var(--h, 14.29%);
+  z-index: 2;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  background: #a88638;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0rad));
+}
+.mini-plan > .mini-cart {
+  width: 8%;
+  height: 10%;
+  z-index: 3;
+  border: 1px solid #d8dfc4;
+  border-radius: 2px;
+  background: #b5d62b;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0rad));
+}
+.mini-plan > .mini-cart.active {
+  outline: 2px solid #ffbd28;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px #edbf3a55;
+}
+.mini-plan > b.active,
+.mini-plan > i.mini-desk.active {
+  background: #de8c26;
+  box-shadow: 0 0 0 3px #edbf3a70;
+}
+.mini-plan > .mini-board,
+.mini-plan > .mini-cabinet {
+  z-index: 3;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  background: #313f3d;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0rad));
+}
+.mini-plan > .mini-board { width: var(--w); height: max(2px, var(--h)); }
+.mini-plan > .mini-cabinet { background: #645f53; }
+.mini-plan > i.active { outline: 2px solid #ffbd28; outline-offset: 2px; }
+.mini-plan > .mini-column {
+  width: 6.6%; height: 5.96%; z-index: 4;
+  border: 1px solid #e8e5db; border-radius: 2px; background: #474946;
+}
+.mini-plan > .mini-window {
+  left: 50%; bottom: 0; width: 86.8%; height: 2px; z-index: 5;
+  background: #55a9aa; box-shadow: 0 2px 4px #236d6e88;
+  transform: translate(-50%, 0);
+}
+.mini-plan > .mini-door {
+  left: 50%; top: 0; width: 14%; height: 2px; z-index: 5;
+  background: #a98a4d; transform: translate(-50%, 0);
+}

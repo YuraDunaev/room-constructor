@@ -1,0 +1,322 @@
+@media (max-width: 1450px) {
+    .command-bar {
+    gap: 8px;
+    padding: 0 12px;
+  }
+    .command-title {
+    display: none;
+  }
+    .toggles {
+    gap: 8px;
+  }
+    .editor-layout {
+    grid-template-columns: var(--sidebar-width) 8px minmax(0, 1fr) 260px;
+  }
+}
+@media (max-width: 1150px) {
+    .editor-layout {
+    grid-template-columns: var(--sidebar-width) 8px minmax(0, 1fr) 245px;
+  }
+    .command-group > span {
+    display: none;
+  }
+    .room-chip {
+    display: none;
+  }
+    .local-label {
+    display: none;
+  }
+    .view-compass {
+    transform: scale(.86);
+    transform-origin: top right;
+  }
+}
+@media (max-width: 900px) and (min-width: 501px) and (orientation: landscape) {
+  html,
+  body {
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+  }
+  #app,
+  .command-bar {
+    min-width: 0;
+    width: 100%;
+  }
+  #app {
+    overflow: hidden;
+  }
+  .topbar {
+    height: 48px;
+    flex-basis: 48px;
+    gap: 10px;
+    padding: 0 10px;
+  }
+  .brand {
+    min-width: 0;
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    font-size: 19px;
+  }
+  .brand small,
+  .breadcrumb,
+  .local-label,
+  #resetPlan,
+  #savePlan {
+    display: none;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  .top-actions #openSettings {
+    min-height: 34px;
+    padding: 0 9px;
+  }
+  .command-bar {
+    height: 54px;
+    flex-basis: 54px;
+    gap: 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 8px;
+    scrollbar-width: thin;
+  }
+  .command-title,
+  .toolbar-spacer,
+  .room-chip,
+  .toggles .check-control:nth-child(n + 3) {
+    display: none;
+  }
+  .tool-button,
+  .command-group button {
+    min-height: 36px;
+    padding: 0 9px;
+  }
+  .add-button {
+    min-height: 36px;
+  }
+  .imported-file-name {
+    max-width: 130px;
+  }
+  .editor-layout {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .project-sidebar,
+  .sidebar-resizer,
+  .properties {
+    display: none;
+  }
+  .viewport {
+    grid-column: 1;
+  }
+  .scene-title {
+    top: 8px;
+    left: 8px;
+    padding: 6px 8px;
+  }
+  .scene-title small {
+    font-size: 12px;
+  }
+  .scene-hint {
+    display: none;
+  }
+  .view-compass {
+    top: 4px;
+    right: 6px;
+    transform: scale(.68);
+    transform-origin: top right;
+  }
+  .zoom-controls {
+    right: 8px;
+    bottom: 8px;
+  }
+  .zoom-controls button {
+    width: 34px;
+    height: 32px;
+  }
+}
+@media (max-width: 500px) {
+  html,
+  body {
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+  }
+  #app,
+  .command-bar {
+    min-width: 0;
+    width: 100%;
+  }
+  #app {
+    overflow: hidden;
+  }
+  .topbar {
+    height: 52px;
+    flex-basis: 52px;
+    gap: 8px;
+    padding: 0 9px;
+  }
+  .brand {
+    min-width: 0;
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    font-size: 19px;
+  }
+  .brand small,
+  .breadcrumb,
+  .local-label,
+  #resetPlan,
+  #savePlan {
+    display: none;
+  }
+  .top-actions {
+    gap: 5px;
+  }
+  .command-bar {
+    height: 52px;
+    flex-basis: 52px;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 8px;
+    scrollbar-width: thin;
+  }
+  .command-title,
+  .toolbar-spacer,
+  .room-chip,
+  .toggles .check-control:nth-child(n + 3) {
+    display: none;
+  }
+  .tool-button,
+  .command-group button {
+    min-height: 36px;
+    padding: 0 9px;
+  }
+  .editor-layout {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .project-sidebar,
+  .sidebar-resizer,
+  .properties {
+    display: none;
+  }
+  .viewport {
+    grid-column: 1;
+  }
+  .scene-title {
+    top: 8px;
+    left: 8px;
+    padding: 6px 8px;
+  }
+  .scene-title small,
+  .scene-hint {
+    display: none;
+  }
+  .view-compass {
+    top: 2px;
+    right: 4px;
+    transform: scale(.58);
+    transform-origin: top right;
+  }
+  .zoom-controls {
+    right: 8px;
+    bottom: 8px;
+  }
+}
+body.touch-walk-controls.walking-mode .walk-hint {
+  bottom: calc(142px + env(safe-area-inset-bottom));
+  width: max-content;
+  max-width: calc(100% - 28px);
+  padding: 9px 12px;
+  font-size: 14px;
+}
+body.touch-walk-controls.walking-mode .walk-mobile-controls {
+  position: absolute;
+  z-index: 9;
+  inset: auto 14px max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.walk-joystick {
+  width: 126px;
+  height: 126px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 2px solid #ffffffa8;
+  border-radius: 50%;
+  background: #171a1dcc;
+  box-shadow: 0 5px 22px #0005, inset 0 0 22px #ffffff12;
+  pointer-events: auto;
+  touch-action: none;
+}
+.walk-joystick::before {
+  content: '⌃';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  color: #ffffffab;
+  font-size: 18px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.walk-joystick-thumb {
+  width: 54px;
+  height: 54px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--yellow) 88%, #fff 12%);
+  box-shadow: 0 3px 12px #0006;
+  pointer-events: none;
+  will-change: transform;
+}
+.walk-mobile-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: auto;
+}
+.walk-mobile-actions button {
+  min-width: 58px;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 2px solid #ffffffb5;
+  border-radius: 50%;
+  background: #171a1de8;
+  color: white;
+  font-size: 20px;
+  font-weight: 750;
+  box-shadow: 0 5px 18px #0005;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.walk-mobile-actions #walkInteract {
+  width: 70px;
+  height: 70px;
+  border-color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 84%, #171a1d 16%);
+  color: #1c1d1b;
+  font-size: 18px;
+}
+.walk-mobile-actions button:disabled {
+  opacity: .48;
+}
+body.touch-walk-controls.walking-mode .walk-mobile-controls {
+    display: flex;
+}
+.properties { grid-column: 4; }

@@ -1,0 +1,231 @@
+.viewport {
+  grid-column: 3;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--scene);
+}
+.scene-host {
+  position: absolute;
+  inset: 0;
+}
+.scene-host canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+.scene-host canvas:active {
+  cursor: grabbing;
+}
+.scene-title {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border: 1px solid #ffffffa3;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: 0 3px 12px #00000010;
+  pointer-events: none;
+}
+.scene-title b {
+  display: block;
+  font-size: 14px;
+}
+.scene-title small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.scene-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  padding: 9px 12px;
+  border: 1px solid #ffffff80;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--muted);
+  font-size: 14px;
+  max-width: min(680px, calc(100% - 120px));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.walk-hint {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 24px;
+  display: none;
+  transform: translateX(-50%);
+  padding: 10px 15px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 62%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+  pointer-events: none;
+}
+.walk-hint.visible { display: block; }
+body.walking-mode .scene-title,
+body.walking-mode .scene-hint,
+body.walking-mode .zoom-controls,
+body.walking-mode .view-compass { display: none; }
+body.walking-mode .scene-host canvas { cursor: none; }
+.walk-reticle {
+  position: absolute;
+  z-index: 7;
+  top: 50%;
+  left: 50%;
+  display: none;
+  width: 5px;
+  height: 5px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 2px 1px #1119;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+body.walking-mode .walk-reticle { display: block; }
+.walk-mobile-controls { display: none; }
+.zoom-controls {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 3px 12px #0002;
+}
+.zoom-controls button {
+  width: 38px;
+  height: 37px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+}
+.zoom-controls button:last-child {
+  border-bottom: 0;
+}
+.zoom-controls button:hover {
+  background: var(--yellow-soft);
+  color: var(--ink);
+}
+.view-compass {
+  width: 170px;
+  height: 154px;
+  position: absolute;
+  top: 17px;
+  right: 18px;
+  z-index: 3;
+  perspective: 520px;
+}
+.cube-stage {
+  width: 100%;
+  height: 128px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  perspective: 520px;
+}
+.cube-orientation {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform .12s linear;
+}
+.view-cube {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: none;
+}
+.cube-face {
+  width: 80px;
+  height: 80px;
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--line-strong) 78%, #777);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--surface-strong) 90%, #c7c8c5);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--surface) 78%, transparent);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  backface-visibility: visible;
+  transition: background-color .16s, color .16s, box-shadow .16s;
+}
+.cube-face:hover {
+  background: var(--yellow) !important;
+  color: #28271f;
+  box-shadow: inset 0 0 0 3px #fff7;
+}
+.face-front { transform: translateZ(40px); }
+.face-back { transform: rotateY(180deg) translateZ(40px); }
+.face-north { transform: rotateY(180deg) translateZ(40px); }
+.face-south { transform: translateZ(40px); }
+.face-east { transform: rotateY(90deg) translateZ(40px); }
+.face-west { transform: rotateY(-90deg) translateZ(40px); }
+.face-top { transform: rotateX(-90deg) translateZ(40px); background: #c8c9c6; }
+.face-bottom { transform: rotateX(90deg) translateZ(40px); }
+.cube-corner {
+  width: 9px;
+  height: 9px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  border: 1px solid #777974;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #fbfbf3 0%, #c7c8be 31%, #74756e 68%, #393a35 100%);
+  box-shadow: inset -1px -1px 2px #0008, inset 1px 1px 2px #fff8, 0 1px 3px #0008;
+  cursor: pointer;
+  transition: none;
+}
+.corner-top-north-west { transform: translate(-50%, -50%) translate3d(-40px, -40px, 40px); }
+.corner-top-north-east { transform: translate(-50%, -50%) translate3d(40px, -40px, 40px); }
+.corner-top-south-west { transform: translate(-50%, -50%) translate3d(-40px, 40px, 40px); }
+.corner-top-south-east { transform: translate(-50%, -50%) translate3d(40px, 40px, 40px); }
+.corner-bottom-north-west { transform: translate(-50%, -50%) translate3d(-40px, -40px, -40px); }
+.corner-bottom-north-east { transform: translate(-50%, -50%) translate3d(40px, -40px, -40px); }
+.corner-bottom-south-west { transform: translate(-50%, -50%) translate3d(-40px, 40px, -40px); }
+.corner-bottom-south-east { transform: translate(-50%, -50%) translate3d(40px, 40px, -40px); }
+.view-compass button {
+  position: absolute;
+  z-index: 2;
+}
+.compass-wcs {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 64px;
+  height: 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}

@@ -6,11 +6,13 @@ The application currently runs entirely in the browser. It does not require a .N
 
 ## Screenshots
 
-![Room Constructor 3D office editor](docs/screenshots/office-layout.png)
+![Room Constructor showing the office, kitchen, and utility room](docs/screenshots/office-layout.png)
 
-The side plan keeps the real 5.76 m × 8.395 m room proportions. Its desk and chair marks, columns, interactive board, cabinet, glazing, and doorway are placed from their scene coordinates and dimensions.
+The overview shows the office beside the L-shaped kitchen and the utility room, with the furniture arranged in the project scene.
 
-![Office plan with object footprints](docs/screenshots/office-plan-detail.png)
+![Kitchen and utility room detail in the 3D scene](docs/screenshots/office-plan-detail.png)
+
+The closer view shows the kitchen glazing, window counter and stools, dining tables, lounge, wall art, and utility-room storage. Room dimensions remain approximate for the kitchen until measured on site.
 
 ## What you can do
 
@@ -18,15 +20,22 @@ The side plan keeps the real 5.76 m × 8.395 m room proportions. Its desk and ch
 - Open a local **GLB, glTF, OBJ, or STL** model from the scene toolbar. Files are read in the browser and are not uploaded; glTF files that reference separate assets must be selected together with those assets.
 - Move workstations, the interactive board, cabinet, and server trolley by dragging them in the scene. A workstation includes its desk, chair, and desktop equipment, so they move and rotate together.
 - View each workstation with two monitors, keyboard, mouse, mouse pad, headset, and a detailed PC case beneath the desk. The separate server trolley model includes a tower, headset, cable, lime handle, and caster wheels.
-- Explore the room from a first-person view using **W A S D** and the mouse. Press **Esc** to leave the walkthrough; browsers that block pointer lock use mouse movement as a fallback.
+- Explore the office, corridor, kitchen, and utility room from a first-person view. Move with **W A S D** (works across keyboard layouts), look with the mouse, and press **Esc** to leave the walkthrough.
+- Use first-person controls on phones: move with the on-screen joystick, drag the scene to look around, and use the touch interaction buttons.
+- Open or close doors while walking. The kitchen entrance and wide double utility-room doorway are interactive, and movement checks door and furniture collisions.
+- Pick up and reposition movable furniture while walking, sit on an office chair and stand up, and interact with the whiteboard.
+- Pick up one of four markers to draw on the whiteboard, or use its eraser to remove marks. Return the marker or eraser when finished.
+- Inspect the adjoining L-shaped kitchen with a window-side counter and stools, dining tables, sofas, coffee counter, water dispenser, columns, shelving, and wall pictures. Kitchen furniture can be rearranged independently.
+- Use the utility room for its intended storage layout: shelving, cleaning tools, cartons, and coffee and pantry supplies. Its main furniture objects can be moved in the editor.
 - Select an object in the project tree to highlight it in the scene; hover over objects in the scene to preview the same highlight.
 - Use keyboard shortcuts for camera orbit, object movement and rotation, zoom, saving, and removing the selected workstation. The full list is available in **Settings**, with a compact hint at the bottom of the scene.
 - Add or remove workstations, rename their occupants, change their positions, and rotate selected movable objects from the scene toolbar or properties panel.
 - Show object dimensions and collision footprints. Overlapping objects and objects outside the room are highlighted in red.
+- Compare collision footprints derived from each object's visible mesh bounds, including detailed furniture and kitchen items.
 - Toggle the room walls and windows, and optionally highlight the work area.
 - Browse room elements in the project tree. Clicking a movable object selects and highlights it in the scene. Drag the divider beside the tree to resize the panel; its width is remembered in the browser.
 - Switch between Russian and English, and between light and dark interface themes in **Settings**.
-- Keep the room plan visible while experimenting. The current room model is 5.76 m × 8.395 m, with a 2.8 m wall height. It includes the short end wall glazing, the opposite end entrance, structural columns, movable cabinet, carpet, and the initial workstations based on the supplied drawings.
+- Keep the office plan visible while experimenting. The office model is 5.76 m × 8.395 m with a 2.8 m wall height. It includes the short end wall glazing, the opposite end entrance, structural columns, movable cabinet, carpet, and initial workstations based on the supplied drawings. Kitchen dimensions are estimates and can be updated when measurements are available.
 - Use the editor on a phone in landscape orientation. The scene fills the screen, supports touch camera gestures, and the scene toolbar can be scrolled horizontally.
 
 ## Requirements
@@ -83,7 +92,8 @@ Then open the address printed by Vite Preview. The `dist/` folder is generated o
 
 - **Rotate the scene:** drag on empty scene space. Scroll to zoom, or use the plus and minus controls. Click a face or corner on the view cube to animate to that view.
 - **Move an object:** drag a desk or the interactive board. Select it in the scene or project tree to edit its name, coordinates, or rotation.
-- **Walk through the room:** click **First-person walk**, use **W A S D** to move and the mouse to look around, then press **Esc** to exit.
+- **Walk through the rooms:** click **First-person walk**, use **W A S D** and the mouse, then press **Esc** to exit. On a phone, use the joystick and drag the scene to look around.
+- **Interact while walking:** click or tap a door to open or close it; click/tap a chair to sit; use **E** to stand, put down a carried object, or return the marker/eraser. Pick up a marker or the eraser near the board. Use **R** to rotate a carried movable object, or draw/erase on the board with the mouse or touch button.
 - **Add a workstation:** click **Add workspace**. Select the new item to rename it or remove it.
 - **Show measurements and conflicts:** turn on **Dimensions** or **Collisions** in the scene toolbar. A selected movable object displays its measured footprint; collision outlines show available and conflicting space.
 - **Change the room display:** use **Walls and windows** and **Work area** in the toolbar. Use **Settings** for language and theme.
@@ -101,9 +111,11 @@ Then open the address printed by Vite Preview. The `dist/` folder is generated o
 | `+` / `-` | Zoom in or out |
 | `Home` | Return to the default 3D view |
 | `Ctrl` + `S` | Save the current plan |
-| `Ctrl` + `Z` | Undo the last workstation, board, or cabinet change |
-| `Ctrl` + `Y` | Redo the undone workstation, board, or cabinet change |
-| `Esc` | Close Settings or clear the current selection |
+| `Ctrl` + `Z` | Undo the last layout change |
+| `Ctrl` + `Y` | Redo the last undone layout change |
+| `E` | In first-person mode, interact, stand up, or put down/return the held item |
+| `R` | In first-person mode, rotate the held movable object |
+| `Esc` | Leave first-person mode, close Settings, or clear the current selection |
 
 Undo and redo cover moves, rotations, additions, removals, and renames. The history is kept in memory for the current page session. The same shortcut list is available in **Settings** in both supported interface languages.
 
@@ -113,13 +125,30 @@ Undo and redo cover moves, rotations, additions, removals, and renames. The hist
 RoomConstructor/
 ├── docs/                 # Reference room images and drawings
 ├── src/
-│   ├── main.js           # UI, room geometry, editor controls, and persistence
-│   └── style.css         # Responsive light and dark themes
+│   ├── config.js             # Room and kitchen dimensions, initial layout
+│   ├── furniture-factory.js  # Workstations, board, cabinet, and server trolley
+│   ├── geometry-tools.js     # Shared Three.js primitives and cleanup
+│   ├── i18n.js               # Russian and English interface strings
+│   ├── kitchen.js            # L-shaped kitchen, pantry, doors, and movable furniture
+│   ├── keyboard-shortcuts.js # Keyboard command handler
+│   ├── model-importer.js     # Local GLB/glTF/OBJ/STL parsing
+│   ├── main.js               # Application composition, UI, scene interaction
+│   ├── style.css             # CSS entry point; preserves import order
+│   └── styles/
+│       ├── tokens.css        # Theme variables, reset, and app base
+│       ├── chrome.css        # Header, toolbar, and editor layout
+│       ├── sidebar.css       # Project tree and resizer
+│       ├── scene.css         # Viewport, compass, and scene controls
+│       ├── properties.css    # Object properties and mini plan
+│       ├── settings.css      # Settings dialog and shortcut list
+│       └── responsive.css    # Tablet, phone, and touch walkthrough rules
 ├── .vscode/              # F5 launch profile and setup task
 ├── index.html            # Application entry point
 ├── package.json          # Scripts and dependencies
 └── package-lock.json     # Reproducible dependency versions
 ```
+
+Scene builders receive geometry helpers and scene groups through their factory functions. This keeps model construction separate from editor state and user input, while allowing the room dimensions and initial layout to be changed in one configuration module.
 
 ## Troubleshooting
 
