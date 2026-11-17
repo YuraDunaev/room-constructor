@@ -51,18 +51,48 @@ export const KITCHEN_MOVABLES = [
 // Preserve the committed office doorway position.
 export const ENTRY = { width: 1.25, centerX: 1.25, height: 2.2 };
 export const startSeats = [
-  { id: 's1', name: 'Сергей', x: -1.53, z: -1.1975, rot: 0, side: -1 },
+  { id: 's1', name: 'Сергей', x: -1.6418356679830433, z: -1.7092308608887012, rot: Math.PI / 2, side: -1 },
   { id: 's2', name: 'Олег', x: 1.53, z: -1.1975, rot: 0, side: 1 },
-  { id: 's3', name: 'Юра', x: -1.53, z: 1.2025, rot: 0, side: -1 },
+  { id: 's3', name: 'Юра', x: -1.4999884769906744, z: 1.0153218123997292, rot: 0, side: -1 },
   { id: 's4', name: 'Юля', x: 1.53, z: 1.2025, rot: 0, side: 1 },
   { id: 's5', name: 'Богдан', x: -1.53, z: 3.6025, rot: 0, side: -1 },
   { id: 's6', name: 'Никита', x: -.93, z: 3.6025, rot: 0, side: 1 },
-  { id: 's7', name: 'Илья', x: .93, z: 3.6025, rot: 0, side: -1 },
+  { id: 's7', name: 'Илья', x: -1.6398127225172336, z: -2.3432410463139286, rot: -Math.PI / 2, side: -1 },
   { id: 's8', name: 'Даша', x: 1.53, z: 3.6025, rot: 0, side: 1 }
 ].map(seat => ({ ...seat, zone: 'work' }));
 export const baseState = {
-  seats: startSeats, board: { x: 0, z: .45, rot: 0 }, cabinet: { x: 11.75, z: 3.0, rot: Math.PI },
-  cart: { x: 1.85, z: -2.65, rot: -.18 }, boardMarks: [], language: 'ru', theme: 'light',
-  kitchenObjects: {}, showWalls: true, showDimensions: false, showCollisions: false,
-  showZones: false, layoutVersion: 10
+  seats: startSeats,
+  board: { x: .0476918642933013, z: -2.1468339363100073, rot: Math.PI / 12 },
+  cabinet: { x: -.512003023999215, z: -3.8575, rot: 0 },
+  cart: { x: -.19109337189030517, z: 1.1010297786047212, rot: -.18 },
+  boardMarks: [],
+  language: 'ru',
+  theme: 'dark',
+  kitchenObjects: {
+    'pantry-rack-back': { x: 4.12, z: .2124999999999999, rot: 0 },
+    'pantry-rack-side': { x: 5.55, z: -1.2475, rot: Math.PI / 2 },
+    'pantry-cleaning-tools': { x: 5.464067795716357, z: -2.9691661840134844, rot: 0 },
+    'pantry-cartons': { x: 3.5561553205527563, z: -.6837609378244749, rot: 0 },
+    'kitchen-column-1': { x: 8.102296300169034, z: -2.2739052785082743, rot: 0 },
+    'kitchen-column-2': { x: 8.019544955273492, z: 2.4932705740286685, rot: 0 },
+    'kitchen-column-3': { x: 7.998254322088818, z: 4.464613518073203, rot: 0 },
+    'coffee-counter': { x: 9.903411245967625, z: -3.5027334849907197, rot: 0 },
+    'water-dispenser': { x: 7.081425955507003, z: -3.9025777269603967, rot: 0 },
+    'dining-table-1': { x: 7.984706964354481, z: -.3829068735016632, rot: Math.PI / 2 },
+    'dining-table-2': { x: 10.411068188411232, z: -1.5201098562433741, rot: 0 },
+    'dining-table-3': { x: 10.03202152465984, z: 3.535784091783255, rot: -Math.PI / 2 },
+    'dining-table-4': { x: 10.374680463486708, z: 1.0093981330965733, rot: 0 },
+    'window-bar': { x: 7, z: 6.0525, rot: 0 },
+    'sofa-blue': { x: 3.556379688744008, z: 2.874885429190544, rot: Math.PI / 2 },
+    'sofa-green': { x: 4.963691249014405, z: 1.332001912561183, rot: 0 },
+    'sofa-yellow': { x: 5.099339460893011, z: 4.018770294355725, rot: -Math.PI },
+    'lounge-table': { x: 4.967162441927876, z: 2.627820433400129, rot: 0 },
+    'plant-shelf': { x: 11.461949543024955, z: 5.806479354536584, rot: 0 },
+    'wall-art': { x: 12.39, z: .4269611520872334, rot: 0 }
+  },
+  showWalls: true,
+  showDimensions: false,
+  showCollisions: true,
+  showZones: false,
+  layoutVersion: 11
 };

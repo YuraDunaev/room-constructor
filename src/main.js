@@ -27,13 +27,13 @@ function loadState() {
       showZones: saved.showZones ?? baseState.showZones
     };
 
-    // Version 10 establishes the user-approved reference arrangement as the
+    // Version 11 establishes the user-approved reference arrangement as the
     // canonical default. Older saved layouts must not override its coordinates.
     if (saved.layoutVersion === baseState.layoutVersion) {
-      return { ...baseState, ...saved, ...preferences };
+      return { ...structuredClone(baseState), ...saved, ...preferences };
     }
 
-    const referenceLayout = { ...baseState, ...preferences };
+    const referenceLayout = { ...structuredClone(baseState), ...preferences };
     try {
       localStorage.setItem('room-layout', JSON.stringify(referenceLayout));
     } catch { /* Keep the reference layout in memory when storage is unavailable. */ }
@@ -475,13 +475,14 @@ function bindUi() {
   };
   app.querySelector('#resetPlan').onclick = () => {
     if (!confirm(t('resetConfirm'))) return;
-    state.seats = structuredClone(startSeats); state.board = { x: 0, z: .45, rot: 0 };
+    state.seats = structuredClone(baseState.seats);
+    state.board = structuredClone(baseState.board);
     state.cabinet = structuredClone(baseState.cabinet);
-    state.cart = { x: 1.85, z: -2.65, rot: -.18 };
-    state.kitchenObjects = {};
+    state.cart = structuredClone(baseState.cart);
+    state.kitchenObjects = structuredClone(baseState.kitchenObjects);
     for (const item of movable.values()) {
       if (item.kind !== 'kitchen') continue;
-      Object.assign(item.data, item.defaultTransform);
+      item.data = state.kitchenObjects[item.id] || { ...item.defaultTransform };
       state.kitchenObjects[item.id] = item.data;
       item.group.position.set(item.data.x, 0, item.data.z - KITCHEN_Z_OFFSET);
       item.group.rotation.y = item.data.rot || 0;
