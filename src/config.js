@@ -64,5 +64,5 @@ export const baseState = {
   seats: startSeats, board: { x: 0, z: .45, rot: 0 }, cabinet: { x: 11.75, z: 3.0, rot: Math.PI },
   cart: { x: 1.85, z: -2.65, rot: -.18 }, boardMarks: [], language: 'ru', theme: 'light',
   kitchenObjects: {}, showWalls: true, showDimensions: false, showCollisions: false,
-  showZones: false, layoutVersion: 9
+  showZones: false, layoutVersion: 10
 };

@@ -18,54 +18,26 @@ import {
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem('room-layout') || '{}');
-    let savedSeats;
-    if ([6, 7, 8, 9].includes(saved.layoutVersion) && Array.isArray(saved.seats)) {
-      savedSeats = saved.seats;
-    } else if (saved.layoutVersion === 5 && Array.isArray(saved.seats)) {
-      savedSeats = saved.seats.map(seat => {
-        const correctedSeat = startSeats.find(item => item.id === seat.id);
-        return ['s2', 's4'].includes(seat.id) && correctedSeat
-          ? { ...seat, x: correctedSeat.x, z: correctedSeat.z, side: correctedSeat.side }
-          : seat;
-      });
-    } else {
-      savedSeats = startSeats.map((seat, index) => ({
-        ...seat,
-        name: saved.seats?.[index]?.name || seat.name
-      }));
-    }
-    const seats = savedSeats.map(seat => seat.name === 'Новый БИМщик' ? { ...seat, name: 'Олег' } : seat);
-    if (seats.some((seat, index) => seat.name !== savedSeats[index].name)) {
-      try {
-        localStorage.setItem('room-layout', JSON.stringify({ ...saved, seats, layoutVersion: 9 }));
-      } catch { /* Keep the migrated name in memory when storage is unavailable. */ }
-    }
-    if (saved.layoutVersion !== 9) {
-      try {
-        const cabinet = saved.layoutVersion >= 8
-          ? saved.cabinet || baseState.cabinet
-          : baseState.cabinet;
-        localStorage.setItem('room-layout', JSON.stringify({
-          ...baseState,
-          ...saved,
-          seats,
-          cabinet,
-          kitchenObjects: saved.layoutVersion === 9 ? saved.kitchenObjects || {} : {},
-          layoutVersion: 9
-        }));
-      } catch { /* Keep the migrated layout in memory when storage is unavailable. */ }
-    }
-    const cabinet = saved.layoutVersion >= 8
-      ? saved.cabinet || baseState.cabinet
-      : baseState.cabinet;
-    return {
-      ...baseState,
-      ...saved,
-      seats,
-      cabinet,
-      kitchenObjects: saved.layoutVersion === 9 ? saved.kitchenObjects || {} : {},
-      layoutVersion: 9
+    const preferences = {
+      language: ['ru', 'en'].includes(saved.language) ? saved.language : baseState.language,
+      theme: ['light', 'dark'].includes(saved.theme) ? saved.theme : baseState.theme,
+      showWalls: saved.showWalls ?? baseState.showWalls,
+      showDimensions: saved.showDimensions ?? baseState.showDimensions,
+      showCollisions: saved.showCollisions ?? baseState.showCollisions,
+      showZones: saved.showZones ?? baseState.showZones
     };
+
+    // Version 10 establishes the user-approved reference arrangement as the
+    // canonical default. Older saved layouts must not override its coordinates.
+    if (saved.layoutVersion === baseState.layoutVersion) {
+      return { ...baseState, ...saved, ...preferences };
+    }
+
+    const referenceLayout = { ...baseState, ...preferences };
+    try {
+      localStorage.setItem('room-layout', JSON.stringify(referenceLayout));
+    } catch { /* Keep the reference layout in memory when storage is unavailable. */ }
+    return referenceLayout;
   } catch { return structuredClone(baseState); }
 }
 let state = loadState();
